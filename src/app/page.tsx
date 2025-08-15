@@ -1,32 +1,24 @@
-'use client';
+import { cookies } from 'next/headers';
+import { COOKIE_THEME } from "@/lib/constants";
+import ThemeSelector from "@/ui/ThemeSelector"; 
 
-import { useState } from 'react';
-
-export default function HomePage() {
-  const themes = ['light', 'dark', 'cupcake', 'bumblebee'];
-  const [theme, setTheme] = useState('light');
-
-  const handleChangeTheme = (nextTheme: string) => {
-    setTheme(nextTheme);
-    document.documentElement.setAttribute('data-theme', nextTheme);
-  };
+export default async function HomePage() {
+  const cookieStore = await cookies();
+  const theme = cookieStore.get(COOKIE_THEME)?.value || 'light';
 
   return (
     <div className="p-8 space-y-6">
       <h1 className="text-4xl font-bold">Welcome to My Readcast</h1>
       <p className="text-lg">This is a demo homepage showing daisyUI themes.</p>
 
-      {/* 主题切换按钮 */}
-      <div className="space-x-2">
-        {themes.map((t) => (
-          <button
-            key={t}
-            className="btn btn-outline btn-primary"
-            onClick={() => handleChangeTheme(t)}
-          >
-            {t}
-          </button>
-        ))}
+      {/* 1. 创建一个导航栏 */}
+      <div className="navbar bg-base-100 shadow-lg">
+        <div className="flex-1">
+          <a className="btn btn-ghost text-xl">myreadcast</a>
+        </div>
+        <div className="flex-none">
+          <ThemeSelector initialTheme={theme}/>
+        </div>
       </div>
 
       {/* 演示组件 */}
