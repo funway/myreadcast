@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { cookies } from 'next/headers';
 import { COOKIE_THEME } from "@/lib/constants";
+import ThemeSelector from "@/ui/ThemeSelector"; 
 
 import "./globals.css";
 
@@ -20,6 +21,10 @@ export default async function RootLayout({
   return (
     <html lang="en" data-theme={theme}>
       <body>
+        <div className="absolute top-4 right-4 z-50">
+          <ThemeSelector initialTheme={theme} />
+        </div>
+
         {children}
       </body>
     </html>

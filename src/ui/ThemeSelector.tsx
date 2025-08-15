@@ -6,7 +6,7 @@ import { COOKIE_THEME, DAISY_THEMES } from "@/lib/constants";
 
 // This component renders the small 2x2 color grid for the theme preview
 const ThemePreview = ({ theme }: { theme: string }) => (
-  <div data-theme={theme} className="bg-base-100 grid shrink-0 grid-cols-2 gap-0.5 rounded-md border border-base-content/20 p-1">
+  <div data-theme={theme} className="bg-base-100 group-hover:border-base-content/20 border-base-content/10 grid shrink-0 grid-cols-2 gap-0.5 rounded-md border p-1 transition-colors">
     <div className="bg-base-content size-1 rounded-full"></div>
     <div className="bg-primary size-1 rounded-full"></div>
     <div className="bg-secondary size-1 rounded-full"></div>
@@ -30,9 +30,9 @@ const ThemeSelector = ({ initialTheme }: { initialTheme: string }) => {
   };
 
   return (
-    <div title="Change Theme" className="dropdown dropdown-end">
+    <div title="Change Theme" className="dropdown dropdown-end block">
       {/* Dropdown Trigger Button */}
-      <div tabIndex={0} role="button" className="btn btn-ghost btn-sm gap-1.5 px-1.5">
+      <div tabIndex={0} role="button" className="btn group btn-sm gap-1.5 px-1.5 btn-ghost" aria-label="Change Theme">
         <ThemePreview theme={theme} />
         <svg width="12px" height="12px" className="mt-px hidden size-2 fill-current opacity-60 sm:inline-block" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2048 2048">
           <path d="M1799 349l242 241-1017 1017L7 590l242-241 775 775 775-775z"></path>
@@ -40,8 +40,8 @@ const ThemeSelector = ({ initialTheme }: { initialTheme: string }) => {
       </div>
       
       {/* Dropdown Content */}
-      <div tabIndex={0} className="dropdown-content bg-base-200 text-base-content rounded-box top-px h-[70vh] max-h-96 w-56 overflow-y-auto shadow-2xl mt-16 border border-white/5">
-        <ul className="menu menu-sm p-2">
+      <div tabIndex={0} className="dropdown-content bg-base-200 text-base-content rounded-box top-px h-[30.5rem] max-h-[calc(100vh-8.6rem)] overflow-y-auto border border-white/5 shadow-2xl outline-1 outline-black/5 mt-16">
+        <ul className="menu w-56">
           <li className="menu-title text-xs">Theme</li>
           {DAISY_THEMES.map((themeName) => (
             <li key={themeName}>
