@@ -1,33 +1,19 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useActionState } from 'react';
+import { authenticate } from '@/lib/actions';
 import { UserIcon, KeyIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
 
 export default function LoginForm() {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-
-    // --- 在这里添加您的登录逻辑 ---
-    // 模拟一个网络请求
-    setTimeout(() => {
-      console.log('Logging in with:', { username, password });
-      if (username === 'admin' && password === 'password') {
-        console.log('Login successful!');
-        // 在真实应用中，这里会进行页面跳转
-      } else {
-        setError('Invalid username or password.');
-      }
-      setLoading(false);
-    }, 1000);
-    // --- 登录逻辑结束 ---
-  };
+  // 使用 useActionState 来管理表单状态
+  // 它返回 [state, formAction, isPending]
+  // state: 当前的状态，这里是 errorMessage
+  // formAction: 传递给 <form> action 属性的函数
+  // isPending: 一个布尔值，表示表单是否正在提交
+  const [errorMessage, formAction, isPending] = useActionState(
+    authenticate,
+    undefined,
+  );
 
   return (
     // 使用 padding 和 max-width 来控制表单大小和布局
@@ -35,7 +21,7 @@ export default function LoginForm() {
       <h2 className="text-2xl font-bold text-center">
         Please log in to continue.
       </h2>
-      <form className="space-y-6" onSubmit={handleLogin}>
+      <form className="space-y-6" action={formAction}>
         
         {/* Username Input */}
         <div className="form-control">
@@ -49,8 +35,6 @@ export default function LoginForm() {
               id="username"
               name="username"
               placeholder="Enter your username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
               required
             />
             <UserIcon className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-base-content/40 peer-focus:text-base-content/80" />
@@ -70,26 +54,26 @@ export default function LoginForm() {
               name="password"
               placeholder="Enter password"
               required
-              minLength={6}
+              minLength={4}
             />
             <KeyIcon className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-base-content/40 peer-focus:text-base-content/80" />
           </div>
         </div>
 
         {/* Error Message */}
-        {error && (
+        {errorMessage && (
           <div role="alert" className="alert alert-error text-sm p-2">
             <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-            <span>{error}</span>
+            <span>{errorMessage}</span>
           </div>
         )}
 
         {/* Login Button */}
         <div className="form-control mt-6">
-          <button className="btn btn-primary w-full rounded-lg" type="submit" disabled={loading}>
-            {loading && <span className="loading loading-spinner"></span>}
+          <button className="btn btn-primary w-full rounded-lg" type="submit" disabled={isPending}>
+            {isPending && <span className="loading loading-spinner"></span>}
             Log in
-            {!loading && <ArrowRightIcon className="w-5 h-5" />}
+            {!isPending && <ArrowRightIcon className="w-5 h-5" />}
           </button>
         </div>
       </form>

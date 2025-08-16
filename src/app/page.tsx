@@ -1,10 +1,5 @@
-import { cookies } from 'next/headers';
-import { COOKIE_THEME } from "@/lib/constants";
-import ThemeSelector from "@/ui/ThemeSelector"; 
 
 export default async function HomePage() {
-  const cookieStore = await cookies();
-  const theme = cookieStore.get(COOKIE_THEME)?.value || 'light';
 
   return (
     <div className="p-8 space-y-6">
@@ -15,9 +10,6 @@ export default async function HomePage() {
       <div className="navbar bg-base-100 shadow-lg">
         <div className="flex-1">
           <a className="btn btn-ghost text-xl">myreadcast</a>
-        </div>
-        <div className="flex-none">
-          <ThemeSelector initialTheme={theme}/>
         </div>
       </div>
 

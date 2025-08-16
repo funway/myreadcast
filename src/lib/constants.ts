@@ -1,3 +1,13 @@
+import path from 'path';
+
+// export const BASE_PATH = path.join(__dirname, '../..');
+export const BASE_PATH = path.resolve('./');
+
+// logging
+export const LOG_DIR = path.join(BASE_PATH, 'logs');
+export const LOG_MAX_FILE_SIZE = 10 * 1024 * 1024;
+export const LOG_MAX_FILES = 5;
+
 // cookies
 export const COOKIE_THEME = 'daisy_theme'
 
