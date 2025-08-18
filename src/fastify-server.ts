@@ -1,5 +1,8 @@
+import 'dotenv/config';
 import Fastify from 'fastify';
+import cookie from '@fastify/cookie'
 import next from 'next';
+import { middleware } from './lib/server-middleware';
 
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = process.env.FASTIFY_HOST || 'localhost';
@@ -14,15 +17,29 @@ const server = Fastify({
 const nextApp = next({ dev, hostname, port, turbopack: dev });
 const nextHandler = nextApp.getRequestHandler();
 
-// 定义 fastify 的钩子处理函数
+// 注册 fastify 插件
+server.register(cookie);  // @fastify/cookie 插件, 默认插入到 onRequest hook
+
+// 注册 fastify 的钩子处理函数 (https://fastify.dev/docs/latest/Reference/Hooks/)
 // - 使用 preHandler 钩子注入我们自定义的中间件
 server.addHook('preHandler', async (request, reply) => {
   try {
     // call our middleware() here
+    middleware(request, reply);
   } catch (error) {
     server.log.error(error, 'Middleware error');
     reply.status(500).send({ error: 'Internal server error' });  // send() 表示发送响应，所以后续 handler 就不会再处理了
   }
+});
+
+server.addHook('onResponse', async (request, reply) => {
+  // 检查响应头
+  const setCookieHeader = reply.cookies;
+  console.log('Final Set-Cookie header:', setCookieHeader);
+});
+
+server.get('/home', async (request, reply) => {
+  reply.send({ hello: 'funway' });
 });
 
 // 定义 fastify 的路由处理函数
@@ -31,7 +48,7 @@ server.all('/*', async (request, reply) => {
   try {
     await nextHandler(request.raw, reply.raw);
     // reply.sent = true;   // 这是错误写法, sent 是只读属性，用来判断是否执行了 reply.send()
-    reply.hijack();      // 告诉 fastify 这个请求被 nextjs 接管了，你不用管了。(其实可以不用加吧)
+    // reply.hijack();      // 告诉 fastify 这个请求被 nextjs 接管了，你不用管了。(其实可以不用加吧)
   } catch (error) {
     server.log.error(error, '🛑 Next.js handler error');
     if (!reply.sent) {

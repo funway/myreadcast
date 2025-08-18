@@ -166,7 +166,7 @@ export async function signIn(username: string, password: string): Promise<Sessio
  * 用户登出
  */
 export async function signOut(): Promise<void> {
-  logger.debug('用户登出', auth())
+  logger.debug('用户登出', await auth());
   clearAuthCookies();
 }
 

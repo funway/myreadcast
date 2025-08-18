@@ -24,7 +24,7 @@ interface LogEntry {
   timestamp: string;
   level: LogLevel;
   message: string;
-  extraData?: any;
+  extraData?: object | null;
 }
 
 // 队列项的接口
@@ -64,6 +64,15 @@ class Logger {
     this.minLevel = config.minLevel ?? LogLevel.INFO;
     
     this.ensureLogDirectory();
+    
+    console.log('Logger initialized with config:', {
+      logDir: this.logDir,
+      maxFileSize: this.maxFileSize,
+      maxFiles: this.maxFiles,
+      batchSize: this.batchSize,
+      maxRetries: this.maxRetries,
+      minLevel: this.minLevel,
+    });
   }
 
   // 确保日志目录存在
@@ -175,7 +184,7 @@ class Logger {
       // 删除最旧的文件
       try {
         await fsPromises.unlink(`${filePath}.${this.maxFiles}`);
-      } catch (e) {
+      } catch {
         // 如果文件不存在，忽略错误
       }
 
@@ -183,7 +192,7 @@ class Logger {
       for (let i = this.maxFiles - 1; i >= 1; i--) {
         try {
           await fsPromises.rename(`${filePath}.${i}`, `${filePath}.${i + 1}`);
-        } catch (e) {
+        } catch {
           // 如果文件不存在，忽略错误
         }
       }
@@ -196,7 +205,7 @@ class Logger {
   }
   
   // 公共日志方法
-  public debug(message: string, extraData?: any) {
+  public debug(message: string, extraData?: object | null) {
     this.writeLog({
       timestamp: new Date().toISOString(),
       level: LogLevel.DEBUG,
@@ -205,7 +214,7 @@ class Logger {
     });
   }
 
-  public info(message: string, extraData?: any) {
+  public info(message: string, extraData?: object | null) {
     this.writeLog({
       timestamp: new Date().toISOString(),
       level: LogLevel.INFO,
@@ -214,7 +223,7 @@ class Logger {
     });
   }
 
-  public warn(message: string, extraData?: any) {
+  public warn(message: string, extraData?: object | null) {
     this.writeLog({
       timestamp: new Date().toISOString(),
       level: LogLevel.WARN,
@@ -224,12 +233,12 @@ class Logger {
   }
 
   // 修正 error 方法，优化 Error 对象处理和数据合并逻辑
-  public error(message: string, error?: unknown, extraData?: any) {
+  public error(message: string, error?: unknown, extraData?: object | null) {
     let finalExtraData = extraData;
 
     // 如果有 Error 对象，将其信息合并到 extraData 中
     if (error) {
-      let errorData: any;
+      let errorData: object | null;
       if (error instanceof Error) {
         // Error 类型, 展开详细信息
         errorData = {
@@ -264,7 +273,7 @@ class Logger {
     url: string, 
     statusCode: number, 
     responseTime: number, 
-    extraData?: any
+    extraData?: object | null
   ) {
     this.writeLog({
       timestamp: new Date().toISOString(),

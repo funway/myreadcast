@@ -61,10 +61,14 @@ export const config = {
 
 export default async function middleware(req: NextRequest) { 
   const { nextUrl } = req;
+  
+  const response = NextResponse.next();
+  // 在响应对象上设置一个名为 'my-cookie' 的 Cookie
+  response.cookies.set('my-cookie', 'my-cookie-value');
 
   if (nextUrl.pathname.startsWith('/admin')) { 
     return new NextResponse(null, { status: 404 });
   }
 
-  return NextResponse.next();
+  return response;
 }

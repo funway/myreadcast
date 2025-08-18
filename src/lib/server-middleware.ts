@@ -3,26 +3,51 @@
  * Therefore, we have to implement this custom server-middleware to capture all requests and handle them on the server-side.
  */
 import type { FastifyRequest, FastifyReply } from 'fastify';
+import { logger } from './logger';
 
-export interface MiddRequest {
-  method: string;
-  url: string;
-  headers: Record<string, string | string[] | undefined>;
-  body: any;
-  ip: string;
-  query: Record<string, any>;
-  params: Record<string, any>;
-  cookies: Record<string, string>;
-  userAgent?: string;
-  referer?: string;
-  user?: any; // 用户信息（认证后添加）
-}
+// export interface MiddRequest {
+//   method: string;
+//   url: string;
+//   headers: Record<string, string | string[] | undefined>;
+//   body: any;
+//   ip: string;
+//   query: Record<string, any>;
+//   params: Record<string, any>;
+//   cookies: Record<string, string>;
+//   userAgent?: string;
+//   referer?: string;
+//   user?: any; // 用户信息（认证后添加）
+// }
 
-export interface MiddResponse {
-  allow: boolean;
-  modifiedRequest?: Partial<MiddRequest>;
-  redirect?: { url: string; status?: number };
-  render?: { url: string };
-  block?: { status?: number; body?: any };
+// export interface MiddResponse {
+//   allow: boolean;
+//   modifiedRequest?: Partial<MiddRequest>;
+//   redirect?: { url: string; status?: number };
+//   render?: { url: string };
+//   block?: { status?: number; body?: any };
+// }
+
+export async function middleware(request: FastifyRequest, reply: FastifyReply) {
+  logger.debug("所有 cookie: ", request.cookies);
+  // reply.setCookie('test_cookie', '123123', {
+  //   path: '/',
+  //   maxAge: 10_000,
+  // });
+  reply
+    .setCookie('foo', 'foo', {
+      domain: 'example.com',
+      path: '/'
+    })
+    .cookie('baz', 'baz') // alias for setCookie
+    .setCookie('bar', 'bar', {
+      path: '/',
+    })
+  // .send({ hello: 'world' })
+  
+  reply.raw.setHeader('Set-Cookie', 'test_cookie=123123; Path=/; Max-Age=10000');
+
+
+  const setCookieHeader = reply.cookies;
+  console.log('In Set-Cookie header:', setCookieHeader);
 }
 

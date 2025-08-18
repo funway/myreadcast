@@ -1,0 +1,20 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "commonjs",      
+    "moduleResolution": "node",
+    "noEmit": false,            // 输出编译后的 js 文件
+    "outDir": "./dist", 
+    "rootDir": "./src"
+  },
+  "include": [
+    "src/fastify-server.ts",
+    "src/lib/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/app",
+    "src/pages"
+  ]
+}

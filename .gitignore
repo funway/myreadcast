@@ -45,3 +45,4 @@ project.md
 *.sqlite
 *.db
 /logs/*
+/dist/*
