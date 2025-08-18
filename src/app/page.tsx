@@ -1,6 +1,4 @@
-
 export default async function HomePage() {
-
   return (
     <div className="p-8 space-y-6">
       <h1 className="text-4xl font-bold">Welcome to My Readcast</h1>

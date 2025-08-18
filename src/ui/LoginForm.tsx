@@ -6,10 +6,13 @@ import { UserIcon, KeyIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
 
 export default function LoginForm() {
   // 使用 useActionState 来管理表单状态
-  // 它返回 [state, formAction, isPending]
-  // state: 当前的状态，这里是 errorMessage
-  // formAction: 传递给 <form> action 属性的函数
-  // isPending: 一个布尔值，表示表单是否正在提交
+  // 它接受两个必填参数 [action, initialState]
+  //  - action 指向要执行的服务端函数, 我们这里是 authenticatie()
+  //  - initialState 是初始状态值。这个值将在第一次渲染时被用作返回的 state 值 (在这里即初始错误信息，我们不需要，所以定义为 undefined)
+  // 它返回 [state, dispatch, isPending]
+  //  - state: 当前的状态值，这里是 errorMessage
+  //  - dispatch: 传递给 <form> action 属性的函数, 我们命名为 formAction
+  //  - isPending: 一个布尔值，表示表单是否正在提交
   const [errorMessage, formAction, isPending] = useActionState(
     authenticate,
     undefined,

@@ -1,7 +1,7 @@
 import fs from 'fs';
 import { promises as fsPromises } from 'fs';
 import path from 'path';
-import { LOG_DIR, LOG_MAX_FILES, LOG_MAX_FILE_SIZE } from './constants';
+import { LOG_DIR, LOG_MAX_FILES, LOG_MAX_FILE_SIZE, LOG_LEVEL } from './constants';
 
 // 定义日志级别
 export enum LogLevel {
@@ -13,10 +13,10 @@ export enum LogLevel {
 
 // 映射日志级别的优先级
 const LogLevelPriority = {
-  [LogLevel.DEBUG]: 0,
-  [LogLevel.INFO]: 1,
-  [LogLevel.WARN]: 2,
-  [LogLevel.ERROR]: 3,
+  [LogLevel.DEBUG]: 20,
+  [LogLevel.INFO]: 30,
+  [LogLevel.WARN]: 40,
+  [LogLevel.ERROR]: 50,
 }
 
 // 日志条目的接口
@@ -24,16 +24,14 @@ interface LogEntry {
   timestamp: string;
   level: LogLevel;
   message: string;
-  metadata?: any;
-  userId?: number;
-  ip?: string;
+  extraData?: any;
 }
 
 // 队列项的接口
 interface QueueItem {
   filePath: string;
   content: string;
-  retries: number; // 添加重试次数
+  retries: number;
 }
 
 // Logger 类的配置接口
@@ -77,12 +75,12 @@ class Logger {
 
   // 格式化日志条目
   private formatLogEntry(entry: LogEntry): string {
-    const { timestamp, level, message, metadata, userId, ip } = entry;
+    const { timestamp, level, message, extraData } = entry;
     let logLine = `[${timestamp}] ${level}: ${message}`;
     
-    if (userId) logLine += ` | UserId: ${userId}`;
-    if (ip) logLine += ` | IP: ${ip}`;
-    if (metadata) logLine += ` | Data: ${JSON.stringify(metadata)}`;
+    if (extraData) {
+      logLine += ` | ExtraData: ${JSON.stringify(extraData)}`;
+    }
     
     return logLine + '\n';
   }
@@ -95,6 +93,9 @@ class Logger {
 
   // 将日志添加到队列
   private writeLog(entry: LogEntry, logType: 'app' | 'error' | 'access' = 'app') {
+    if (LogLevelPriority[entry.level] < LogLevelPriority[this.minLevel]) {
+      return;  // 日志等级低于最小等级，直接忽略
+    }
     const filePath = this.getLogFileName(logType);
     const logLine = this.formatLogEntry(entry);
     
@@ -195,65 +196,81 @@ class Logger {
   }
   
   // 公共日志方法
-  public debug(message: string, metadata?: any, userId?: number, ip?: string) {
+  public debug(message: string, extraData?: any) {
     this.writeLog({
       timestamp: new Date().toISOString(),
       level: LogLevel.DEBUG,
       message,
-      metadata,
-      userId,
-      ip
+      extraData
     });
   }
 
-  public info(message: string, metadata?: any, userId?: number, ip?: string) {
+  public info(message: string, extraData?: any) {
     this.writeLog({
       timestamp: new Date().toISOString(),
       level: LogLevel.INFO,
       message,
-      metadata,
-      userId,
-      ip
+      extraData
     });
   }
 
-  public warn(message: string, metadata?: any, userId?: number, ip?: string) {
+  public warn(message: string, extraData?: any) {
     this.writeLog({
       timestamp: new Date().toISOString(),
       level: LogLevel.WARN,
       message,
-      metadata,
-      userId,
-      ip
+      extraData
     });
   }
 
-  public error(message: string, error?: Error, metadata?: any, userId?: number, ip?: string) {
-    const errorData = error ? {
-      name: error.name,
-      message: error.message,
-      stack: error.stack,
-      ...metadata
-    } : metadata;
+  // 修正 error 方法，优化 Error 对象处理和数据合并逻辑
+  public error(message: string, error?: unknown, extraData?: any) {
+    let finalExtraData = extraData;
+
+    // 如果有 Error 对象，将其信息合并到 extraData 中
+    if (error) {
+      let errorData: any;
+      if (error instanceof Error) {
+        // Error 类型, 展开详细信息
+        errorData = {
+          errorName: error.name,
+          errorMessage: error.message,
+          errorStack: error.stack
+        };
+      } else { 
+        // 非 Error 类型 (JavaScript 中 throw 出来的异常，可以是任意数据类型。。。)
+        try { 
+          errorData = { error: JSON.stringify(error) };
+        } catch {
+          errorData = { error: String(error) };
+        }
+      }
+      
+      // 将 error 信息和 extraData 合并
+      finalExtraData = extraData ? { ...extraData, ...errorData } : errorData;
+    }
 
     this.writeLog({
       timestamp: new Date().toISOString(),
       level: LogLevel.ERROR,
       message,
-      metadata: errorData,
-      userId,
-      ip
+      extraData: finalExtraData
     }, 'error');
   }
 
-  // 访问日志
-  public access(method: string, url: string, statusCode: number, responseTime: number, userId?: number, ip?: string) {
+  // 访问日志 - 添加 extraData 参数
+  public access(
+    method: string, 
+    url: string, 
+    statusCode: number, 
+    responseTime: number, 
+    extraData?: any
+  ) {
     this.writeLog({
       timestamp: new Date().toISOString(),
       level: LogLevel.INFO,
       message: `${method} ${url} ${statusCode} ${responseTime}ms`,
-      userId,
-      ip
+      extraData
     }, 'access');
   }
 
@@ -277,5 +294,5 @@ export const logger = new Logger({
   logDir: LOG_DIR,
   maxFileSize: LOG_MAX_FILE_SIZE,
   maxFiles: LOG_MAX_FILES,
-  minLevel: (process.env.LOG_LEVEL as LogLevel) ?? LogLevel.INFO,
+  minLevel: (LOG_LEVEL as LogLevel) ?? LogLevel.INFO,
 });

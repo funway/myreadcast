@@ -1,16 +1,15 @@
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import Database from 'better-sqlite3';
-import * as schema from '@/lib/db/schema'; // 确保路径正确
 import fs from 'fs';
 import path from 'path';
+import * as schema from '@/lib/db/schema'; // 确保路径正确
+import { DB_FILE, DB_MIGRATION } from '@/lib/constants';
 
 // 从环境变量读取路径，如果未设置则使用默认值
-const dbFile = process.env.DB_FILE!;
-const migrationsFolder = process.env.DB_MIGRATION!;
+const dbPath = DB_FILE!;
+const migrationsFolder = DB_MIGRATION!;
 
-// 构建数据库文件的绝对路径
-const dbPath = path.join(process.cwd(), dbFile);
 // 获取数据库文件所在的目录
 const dbDir = path.dirname(dbPath);
 
@@ -22,7 +21,7 @@ if (!fs.existsSync(dbDir)) {
 // 使用 better-sqlite3 初始化数据库连接 (如果 dbPath 不存在，则会自动创建)
 const sqlite = new Database(dbPath);
 
-// 将 better-sqlite3 实例传递给 Drizzle
+// 创建 db 对象并导出供外部使用
 export const db = drizzle(sqlite, { schema });
 
 // 使用一个简单的锁来防止在并发请求下重复执行

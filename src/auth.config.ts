@@ -1,5 +1,4 @@
 import type { NextAuthConfig } from 'next-auth';
-// next-auth sucks! 凸(-｡-;
 
 export const authConfig = {
   // 在 auth.ts 中定义 providers, 保证 auth.config.ts 是 Edge-safe

@@ -1,14 +1,15 @@
 import NextAuth from 'next-auth';
-import { authConfig } from './auth.config';
 import CredentialsProvider from "next-auth/providers/credentials";
 import { db, initializeDatabase } from "@/lib/db/init";
-import { user as userTable } from "@/lib/db/schema";
+import { UserTable as userTable } from "@/lib/db/schema";
+import { authConfig } from '@/auth.config';
 import { sql } from "drizzle-orm";
 import bcrypt from 'bcrypt';
 import { createId } from '@paralleldrive/cuid2';
+import { generateRandomToken } from './lib/helpers';
 
 export const { 
-  handlers: { GET, POST }, 
+  handlers, 
   auth, 
   signIn, 
   signOut 
@@ -22,9 +23,12 @@ export const {
         password: { label: "Password", type: "password", placeholder: "---" }
       },
       async authorize(credentials) {
+        console.log("😤 ");
         if (!credentials?.username || !credentials.password) { 
           throw new Error("Username or Password can not be empty");
         }
+        const username = credentials.username;
+        const password = credentials.password;
 
         // 1. 确保数据库已初始化
         await initializeDatabase();
@@ -36,13 +40,16 @@ export const {
         // 3. 如果 user 表为空，创建第一个用户作为 root
         if (userCount === 0) {
           console.log("No users found. Creating first user as root...");
-          const hashedPassword = await bcrypt.hash(credentials.password as string, 10);
+          const hashedPassword = await bcrypt.hash(password, 10);
+          const token = generateRandomToken();
           const newUser = {
             id: createId(),
-            username: credentials.username as string,
+            username: username,
             password: hashedPassword,
+            token: token,
             role: "root",
-          };
+            image: null,
+          }
           
           await db.insert(userTable).values(newUser);
           console.log("First user created:", newUser.username);

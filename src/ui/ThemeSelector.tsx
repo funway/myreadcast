@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Cookies from 'js-cookie';
-import { COOKIE_THEME, DAISY_THEMES } from "@/lib/constants";
+import { THEME_COOKIE, DAISY_THEMES } from "@/lib/constants";
 
 // This component renders the small 2x2 color grid for the theme preview
 const ThemePreview = ({ theme }: { theme: string }) => (
@@ -26,7 +26,7 @@ const ThemeSelector = ({ initialTheme }: { initialTheme: string }) => {
 
   const handleThemeChange = (newTheme: string) => {
     setTheme(newTheme);
-    Cookies.set(COOKIE_THEME, newTheme, { expires: 365, path: '/' });
+    Cookies.set(THEME_COOKIE, newTheme, { expires: 365, path: '/' });
   };
 
   return (

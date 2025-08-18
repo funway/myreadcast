@@ -2,11 +2,19 @@
   "name": "myreadcast",
   "version": "0.1.0",
   "private": true,
-  "scripts": {
+  "type": "module",
+  "scripts_bak": {
+    "_comment": "This is original scripts for Next.js",
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
+  },
+  "scripts": {
+    "_comment": "This is new scripts for fastify hosting Next.js",
+    "dev": "node src/server-fastify.ts",
+    "build": "next build",
+    "start": "NODE_ENV=production node src/server-fastify.ts"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
@@ -16,8 +24,10 @@
     "daisyui": "^5.0.50",
     "dotenv": "^17.2.1",
     "drizzle-orm": "^0.44.4",
+    "fastify": "^5.5.0",
     "i": "^0.3.7",
     "js-cookie": "^3.0.5",
+    "jsonwebtoken": "^9.0.2",
     "next": "15.4.6",
     "next-auth": "5.0.0-beta.29",
     "npm": "^11.5.2",
@@ -32,6 +42,7 @@
     "@types/bcrypt": "^6.0.0",
     "@types/better-sqlite3": "^7.6.13",
     "@types/js-cookie": "^3.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

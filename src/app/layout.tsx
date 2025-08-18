@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { cookies } from 'next/headers';
-import { COOKIE_THEME } from "@/lib/constants";
+import { THEME_COOKIE } from "@/lib/constants";
 import ThemeSelector from "@/ui/ThemeSelector"; 
 
 import "./globals.css";
@@ -16,7 +16,7 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const cookieStore = await cookies();
-  const theme = cookieStore.get(COOKIE_THEME)?.value || 'light';
+  const theme = cookieStore.get(THEME_COOKIE)?.value || 'light';
   
   return (
     <html lang="en" data-theme={theme}>
