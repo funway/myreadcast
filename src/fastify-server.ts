@@ -2,7 +2,7 @@ import 'dotenv/config';
 import Fastify from 'fastify';
 import cookie from '@fastify/cookie'
 import next from 'next';
-import { middleware } from './lib/server-middleware';
+import { middleware } from '@/lib/server/fastify-middleware';
 
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = process.env.FASTIFY_HOST || 'localhost';

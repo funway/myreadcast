@@ -3,8 +3,8 @@ import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import Database from 'better-sqlite3';
 import fs from 'fs';
 import path from 'path';
-import * as schema from '@/lib/db/schema'; // 确保路径正确
-import { DB_FILE, DB_MIGRATION } from '@/lib/constants';
+import * as schema from '@/lib/server/db/schema'; // 确保路径正确
+import { DB_FILE, DB_MIGRATION } from '@/lib/server/constants';
 
 // 从环境变量读取路径，如果未设置则使用默认值
 const dbPath = DB_FILE!;

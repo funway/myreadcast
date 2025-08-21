@@ -3,29 +3,7 @@
  * Therefore, we have to implement this custom server-middleware to capture all requests and handle them on the server-side.
  */
 import type { FastifyRequest, FastifyReply } from 'fastify';
-import { logger } from './logger';
-
-// export interface MiddRequest {
-//   method: string;
-//   url: string;
-//   headers: Record<string, string | string[] | undefined>;
-//   body: any;
-//   ip: string;
-//   query: Record<string, any>;
-//   params: Record<string, any>;
-//   cookies: Record<string, string>;
-//   userAgent?: string;
-//   referer?: string;
-//   user?: any; // 用户信息（认证后添加）
-// }
-
-// export interface MiddResponse {
-//   allow: boolean;
-//   modifiedRequest?: Partial<MiddRequest>;
-//   redirect?: { url: string; status?: number };
-//   render?: { url: string };
-//   block?: { status?: number; body?: any };
-// }
+import { logger } from '@/lib/server/logger';
 
 export async function middleware(request: FastifyRequest, reply: FastifyReply) {
   logger.debug("所有 cookie: ", request.cookies);

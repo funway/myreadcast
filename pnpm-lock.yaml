@@ -56,15 +56,15 @@ importers:
       react:
         specifier: 19.1.0
         version: 19.1.0
-      react-daisyui:
-        specifier: ^5.0.5
-        version: 5.0.5(daisyui@5.0.50)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(tailwindcss@4.1.12)
       react-dom:
         specifier: 19.1.0
         version: 19.1.0(react@19.1.0)
       zod:
         specifier: ^4.0.17
         version: 4.0.17
+      zustand:
+        specifier: ^5.0.8
+        version: 5.0.8(@types/react@19.1.10)(react@19.1.0)
     devDependencies:
       '@eslint/eslintrc':
         specifier: ^3
@@ -2409,14 +2409,6 @@ packages:
     resolution: {integrity: sha512-y3bGgqKj3QBdxLbLkomlohkvsA8gdAiUQlSBJnBhfn+BPxg4bc62d8TcBW15wavDfgexCgccckhcZvywyQYPOw==}
     hasBin: true
 
-  react-daisyui@5.0.5:
-    resolution: {integrity: sha512-bh2XjayCeCmV855GqdhvCwIGDsrHxDfbczuVSMze4B71Ou6VwIesMTaHu8LQ6qYFi7tN59mBF073b0EUh2khFA==}
-    peerDependencies:
-      daisyui: ^4.12.10
-      react: '>=16'
-      react-dom: '>=16'
-      tailwindcss: '>=3.2.7'
-
   react-dom@19.1.0:
     resolution: {integrity: sha512-Xs1hdnE+DyKgeHJeJznQmYMIBG3TKIHJJT95Q58nHLSrElKlGQqDTR2HQ9fx5CN/Gk6Vh/kupBTDLU11/nDk/g==}
     peerDependencies:
@@ -2784,6 +2776,24 @@ packages:
 
   zod@4.0.17:
     resolution: {integrity: sha512-1PHjlYRevNxxdy2JZ8JcNAw7rX8V9P1AKkP+x/xZfxB0K5FYfuV+Ug6P/6NVSR2jHQ+FzDDoDHS04nYUsOIyLQ==}
+
+  zustand@5.0.8:
+    resolution: {integrity: sha512-gyPKpIaxY9XcO2vSMrLbiER7QMAMGOQZVRdJ6Zi782jkbzZygq5GI9nG8g+sMgitRtndwaBSl7uiqC49o1SSiw==}
+    engines: {node: '>=12.20.0'}
+    peerDependencies:
+      '@types/react': '>=18.0.0'
+      immer: '>=9.0.6'
+      react: '>=18.0.0'
+      use-sync-external-store: '>=1.2.0'
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+      immer:
+        optional: true
+      react:
+        optional: true
+      use-sync-external-store:
+        optional: true
 
 snapshots:
 
@@ -4937,13 +4947,6 @@ snapshots:
       minimist: 1.2.8
       strip-json-comments: 2.0.1
 
-  react-daisyui@5.0.5(daisyui@5.0.50)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(tailwindcss@4.1.12):
-    dependencies:
-      daisyui: 5.0.50
-      react: 19.1.0
-      react-dom: 19.1.0(react@19.1.0)
-      tailwindcss: 4.1.12
-
   react-dom@19.1.0(react@19.1.0):
     dependencies:
       react: 19.1.0
@@ -5437,3 +5440,8 @@ snapshots:
   yocto-queue@0.1.0: {}
 
   zod@4.0.17: {}
+
+  zustand@5.0.8(@types/react@19.1.10)(react@19.1.0):
+    optionalDependencies:
+      '@types/react': 19.1.10
+      react: 19.1.0

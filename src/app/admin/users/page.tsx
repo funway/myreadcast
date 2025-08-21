@@ -1,8 +1,8 @@
-export default function UserPage() {
+export default function AdminUsersPage() {
   return (
     <div>
       {/* 用户列表页面内容 */}
-      nothing here
+      Admin - users
     </div>
   );
 }

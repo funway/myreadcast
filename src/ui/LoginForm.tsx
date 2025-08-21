@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useActionState } from 'react';
-import { authenticate } from '@/lib/actions';
+import React, { useActionState } from 'react';
+import { signInAction } from '@/lib/server/actions';
 import { UserIcon, KeyIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
 
 export default function LoginForm() {
@@ -14,13 +14,13 @@ export default function LoginForm() {
   //  - dispatch: 传递给 <form> action 属性的函数, 我们命名为 formAction
   //  - isPending: 一个布尔值，表示表单是否正在提交
   const [errorMessage, formAction, isPending] = useActionState(
-    authenticate,
+    signInAction,
     undefined,
   );
 
   return (
     // 使用 padding 和 max-width 来控制表单大小和布局
-    <div className="w-full max-w-md p-8 space-y-6 bg-base-100 rounded-lg shadow-md">
+    <div className="w-full max-w-md p-8 space-y-6 bg-base-200 rounded-lg shadow-md">
       <h2 className="text-2xl font-bold text-center">
         Please log in to continue.
       </h2>

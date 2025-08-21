@@ -1,98 +1,18 @@
-'use server';
-
-import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import { cookies } from 'next/headers';
 import { eq, sql } from 'drizzle-orm';
 import { createId } from '@paralleldrive/cuid2';
 
-import { logger } from '@/lib/logger';
-import { db, initializeDatabase } from "@/lib/db/init";
-import { UserTable } from "@/lib/db/schema";
-import { generateRandomToken } from '@/lib/helpers';
+import { logger } from '@/lib/server/logger';
+import { generateRandomToken } from '@/lib/server/helpers';
+import { db, initializeDatabase } from "@/lib/server/db/init";
+import { UserTable } from "@/lib/server/db/schema";
 import {
-  AUTH_SECRET, ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE,
-  ACCESS_TOKEN_EXPIRES_IN, REFRESH_TOKEN_EXPIRES_IN
-} from '@/lib/constants';
-
-// 会话用户信息接口 (非敏感信息)
-export interface SessionUser {
-  id: string;
-  username: string;
-  role: string;
-  image?: string | null;
-}
-
-// Access Token Payload 接口
-interface AccessTokenPayload extends SessionUser {
-  exp: number;  // expire at
-  iat: number;  // issued at
-}
-
-// Refresh Token Payload 接口
-interface RefreshTokenPayload {
-  id: string;
-  token: string;
-  exp: number;
-  iat: number;
-}
-
-/**
- * 生成 JWT Token
- */
-function generateJWT(payload: object, expiresIn: number): string {
-  // jsonwebtoken.sign() 方法会自动添加 iat 字段和 exp 字段 (根据 expiresIn 参数)
-  return jwt.sign(payload, AUTH_SECRET, { expiresIn });
-}
-
-/**
- * 验证 JWT Token
- * 
- * 只校验 签名 与 过期时间
- */
-function verifyJWT<T>(token: string): T | null {
-  try {
-    const decoded = jwt.verify(token, AUTH_SECRET) as T;
-    return decoded;
-  } catch (error) {
-    return null;
-  }
-}
-
-/**
- * 设置认证 Cookie
- */
-async function setAuthCookies(accessToken: string, refreshToken?: string) {
-  const cookieStore = await cookies();
-
-  // 设置 Access Token Cookie
-  cookieStore.set(ACCESS_TOKEN_COOKIE, accessToken, {
-    httpOnly: true,
-    // secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
-    maxAge: ACCESS_TOKEN_EXPIRES_IN,
-  });
-
-  // 设置 Refresh Token Cookie（如果提供）
-  if (refreshToken) {
-    cookieStore.set(REFRESH_TOKEN_COOKIE, refreshToken, {
-      httpOnly: true,
-      // secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: REFRESH_TOKEN_EXPIRES_IN,
-    });
-  }
-}
-
-/**
- * 清除认证 Cookie
- */
-async function clearAuthCookies() {
-  const cookieStore = await cookies();
-  
-  cookieStore.delete(ACCESS_TOKEN_COOKIE);
-  cookieStore.delete(REFRESH_TOKEN_COOKIE);
-}
+  ACCESS_TOKEN_COOKIE, ACCESS_TOKEN_EXPIRES_IN, REFRESH_TOKEN_COOKIE, REFRESH_TOKEN_EXPIRES_IN,
+  AUTH_SECRET
+} from '@/lib/server/constants';
+import { AccessTokenPayload, RefreshTokenPayload, SessionUser, AuthError } from '@/lib/auth/types';
+import { verifyJWT, generateJWT } from '@/lib/auth/common';
 
 /**
  * 用户登录
@@ -100,8 +20,8 @@ async function clearAuthCookies() {
  * @param password - 密码
  * @returns SessionUser 或 null
  */
-export async function signIn(username: string, password: string): Promise<SessionUser | null> {
-  logger.debug(`signIn: ${username}, ${password}`)
+export async function signIn(username: string, password: string): Promise< { user: SessionUser; token: string } | null> {
+  logger.debug('用户登录', {name: username, password: '***'});
 
   // 1. 确保数据库已初始化
   await initializeDatabase();
@@ -155,23 +75,14 @@ export async function signIn(username: string, password: string): Promise<Sessio
     image: user.image,
   };
   
-  // 生成 JWT tokens
-  const accessToken = generateJWT(sessionUser, ACCESS_TOKEN_EXPIRES_IN);
-  const refreshToken = generateJWT({ id: user.id, token: user.token }, REFRESH_TOKEN_EXPIRES_IN);
-  setAuthCookies(accessToken, refreshToken);
-  return sessionUser;
-}
-
-/**
- * 用户登出
- */
-export async function signOut(): Promise<void> {
-  logger.debug('用户登出', await auth());
-  clearAuthCookies();
+  return { user: sessionUser, token: user.token };
 }
 
 /**
  * 获取当前认证用户
+ * 
+ * `auth` is not Edge safe. 
+ * Use `edgeAuth` if u need to run in Edge runtime.
  * @returns SessionUser 或 null
  */
 export async function auth(): Promise<SessionUser | null> {
@@ -185,7 +96,7 @@ export async function auth(): Promise<SessionUser | null> {
     }
 
     // 2. 验证 Access Token
-    const payload = verifyJWT<AccessTokenPayload>(accessToken);
+    const payload = verifyJWT<AccessTokenPayload>(accessToken, AUTH_SECRET);
     
     // 3. Access Token 有效则返回用户信息
     if (payload) {
@@ -200,13 +111,9 @@ export async function auth(): Promise<SessionUser | null> {
     // 4. Access Token 无效, 尝试使用 Refresh Token 获取新的 Access Token
     const sessionUser = authToken();
     if (!sessionUser) {
-      clearAuthCookies();
       return null;
     }
-    const newAccessToken = generateJWT(sessionUser, ACCESS_TOKEN_EXPIRES_IN);
     
-    // 5. 更新客户端 Access Token Cookie 并返回 SessionUser 对象
-    setAuthCookies(newAccessToken);
     return sessionUser;
   }
   catch (error) {
@@ -215,15 +122,10 @@ export async function auth(): Promise<SessionUser | null> {
   }
 }
 
-class AuthError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'AuthError';
-  }
-}
-
 /**
  * 验证 Refresh Token
+ * 
+ * `authToken` is not Edge safe
  * @returns SessionUser 或 null
  */
 export async function authToken(): Promise<SessionUser | null> {
@@ -235,7 +137,7 @@ export async function authToken(): Promise<SessionUser | null> {
     if (!refreshToken) {
       throw new AuthError('No Refresh Token');
     }
-    const refreshPayload = verifyJWT<RefreshTokenPayload>(refreshToken);
+    const refreshPayload = verifyJWT<RefreshTokenPayload>(refreshToken, AUTH_SECRET);
     if (!refreshPayload) {
       throw new AuthError('Refresh Token verification failed');
     }
@@ -264,7 +166,41 @@ export async function authToken(): Promise<SessionUser | null> {
     } else {
       logger.error('Refresh Token 认证错误 (未知错误)', error);
     }
-    clearAuthCookies();
     return null;
   }
 }
+
+/**
+ * 设置会话 Cookie
+ */
+// export async function setSessionCookies(cookieStore: any, user: SessionUser, token?: string) {
+//   // 设置 Access Token Cookie
+//   const accessToken = generateJWT(user, ACCESS_TOKEN_EXPIRES_IN, AUTH_SECRET);
+//   cookieStore.set(ACCESS_TOKEN_COOKIE, accessToken, {
+//     httpOnly: true,
+//     // secure: process.env.NODE_ENV === 'production',
+//     sameSite: 'strict',
+//     maxAge: ACCESS_TOKEN_EXPIRES_IN,
+//   });
+
+//   // 设置 Refresh Token Cookie（如果提供）
+//   if (token) {
+//     const refreshToken = generateJWT({ id: user.id, token: token }, REFRESH_TOKEN_EXPIRES_IN, AUTH_SECRET);
+//     cookieStore.set(REFRESH_TOKEN_COOKIE, refreshToken, {
+//       httpOnly: true,
+//       // secure: process.env.NODE_ENV === 'production',
+//       sameSite: 'strict',
+//       maxAge: REFRESH_TOKEN_EXPIRES_IN,
+//     });
+//   }
+// }
+
+// /**
+//  * 清除会话 Cookie
+//  */
+// export async function clearSessionCookies() {
+//   const cookieStore = await cookies();
+  
+//   cookieStore.delete(ACCESS_TOKEN_COOKIE);
+//   cookieStore.delete(REFRESH_TOKEN_COOKIE);
+// }

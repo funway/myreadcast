@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import { defineConfig } from "drizzle-kit";
-import { DB_FILE, DB_MIGRATION } from '@/lib/constants';
+import { DB_FILE, DB_MIGRATION } from '@/lib/server/constants';
 
 export default defineConfig({
   dialect: "sqlite",

@@ -25,6 +25,7 @@ interface LogEntry {
   level: LogLevel;
   message: string;
   extraData?: object | null;
+  caller?: string;
 }
 
 // 队列项的接口
@@ -82,10 +83,38 @@ class Logger {
     }
   }
 
+  // 获取调用者的文件和行号信息
+  private getCallerInfo(): string {
+    // 1. 在此处生成一个错误堆栈 (不抛出, 只用来获取调用者信息)
+    const stack = new Error().stack;
+    if (!stack) return '';
+    // console.log(stack);
+
+    const stackLines = stack.split('\n');
+
+    // 2. 从当前的错误堆栈中找到调用者所在的行
+    // (0: Error, 1: Logger.getCallerInfo, 2: Logger.writeLog, 3: Logger.debug, 4: caller-file.ts)
+    const callerLine = stackLines[4] || stackLines[3] || '';
+    
+    // 3. 匹配出函数名、文件名、行号
+    const match = callerLine.match(/at\s+(.+?)\s+\((.+?):(\d+):(\d+)\)/);
+    if (match) {
+      // match[0]: 完整匹配
+      // match[1]: 函数名
+      // match[2]: 文件路径
+      // match[3]: 行号
+      const [, functionName, filePath, line] = match;
+      const fileName = path.relative(process.cwd(), filePath);
+      return `${fileName}:${functionName}:${line}`;
+    }
+
+    return 'unknown:0';
+  }
+
   // 格式化日志条目
   private formatLogEntry(entry: LogEntry): string {
-    const { timestamp, level, message, extraData } = entry;
-    let logLine = `[${timestamp}] ${level}: ${message}`;
+    const { timestamp, level, message, extraData, caller } = entry;
+    let logLine = `[${timestamp}] ${level} [${caller}]: ${message}`;
     
     if (extraData) {
       logLine += ` | ExtraData: ${JSON.stringify(extraData)}`;
@@ -101,12 +130,19 @@ class Logger {
   }
 
   // 将日志添加到队列
-  private writeLog(entry: LogEntry, logType: 'app' | 'error' | 'access' = 'app') {
+  private writeLog(entry: Omit<LogEntry, 'caller'>, logType: 'app' | 'error' | 'access' = 'app') {
     if (LogLevelPriority[entry.level] < LogLevelPriority[this.minLevel]) {
       return;  // 日志等级低于最小等级，直接忽略
     }
+
+    // 获取调用者信息并添加到日志条目中
+    const fullEntry: LogEntry = {
+      ...entry,
+      caller: this.getCallerInfo(),
+    };
+
     const filePath = this.getLogFileName(logType);
-    const logLine = this.formatLogEntry(entry);
+    const logLine = this.formatLogEntry(fullEntry);
     
     this.writeQueue.push({ filePath, content: logLine, retries: 0 });
     

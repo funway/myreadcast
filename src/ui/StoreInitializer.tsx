@@ -1,0 +1,22 @@
+'use client';
+
+import { SessionUser } from "@/lib/auth/types";
+import { useClientStatesStore } from "@/lib/client/store";
+import { useEffect } from "react";
+
+interface StoreInitializerProps { 
+  sessionUser: SessionUser | null;
+}
+
+export default function StoreInitializer({ sessionUser }: StoreInitializerProps) { 
+  // 从 ClientStates 对象中取出 setSessionUser 函数
+  const setSessionUser = useClientStatesStore(state => state.setSessionUser);
+
+  // 通过 useEffect 来调用 状态修改函数
+  useEffect(() => { 
+    console.log('[StoreInitializer] calls useEffect: 执行 ClientStates 的赋值操作', sessionUser);
+    setSessionUser(sessionUser);
+  }, [sessionUser]); 
+  
+  return null;  // 这个组件不渲染任何 HTML 内容
+}
