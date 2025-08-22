@@ -1,4 +1,5 @@
-import TestUI from "@/ui/TestUI";
+import { AuthError } from "@/lib/auth/types";
+import TestUI from "@/ui/test/TestUI";
 
 export default async function HomePage() {
   return (

@@ -37,8 +37,8 @@ export async function signInAction(
   if (!loginResult) {
     return 'Invalid username or password.';
   } else {
-    const accessToken = generateJWT(loginResult.user, ACCESS_TOKEN_EXPIRES_IN, AUTH_SECRET);
-    const refreshToken = generateJWT({ id: loginResult.user.id, token: loginResult.token }, REFRESH_TOKEN_EXPIRES_IN, AUTH_SECRET);
+    const accessToken = await generateJWT(loginResult.user, ACCESS_TOKEN_EXPIRES_IN, AUTH_SECRET);
+    const refreshToken = await generateJWT({ id: loginResult.user.id, token: loginResult.token }, REFRESH_TOKEN_EXPIRES_IN, AUTH_SECRET);
     const cookieStore = await cookies();
     setSessionCookies(cookieStore, accessToken, refreshToken);
     redirect('/');
@@ -51,3 +51,4 @@ export async function signOutAction(redirectTo: string) {
   clearSessionCookies(cookieStore);
   redirect(redirectTo);
 }
+

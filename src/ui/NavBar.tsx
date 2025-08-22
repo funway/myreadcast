@@ -36,7 +36,7 @@ const NavBar = () => {
       </div>
 
       {/* Right side */}
-      <div className="flex gap-2">
+      <div className="flex-1 flex justify-end items-center">
         <ThemeSelector />
         <AvatarDropdown />
       </div>

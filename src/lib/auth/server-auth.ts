@@ -7,12 +7,9 @@ import { logger } from '@/lib/server/logger';
 import { generateRandomToken } from '@/lib/server/helpers';
 import { db, initializeDatabase } from "@/lib/server/db/init";
 import { UserTable } from "@/lib/server/db/schema";
-import {
-  ACCESS_TOKEN_COOKIE, ACCESS_TOKEN_EXPIRES_IN, REFRESH_TOKEN_COOKIE, REFRESH_TOKEN_EXPIRES_IN,
-  AUTH_SECRET
-} from '@/lib/server/constants';
+import { ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE, AUTH_SECRET } from '@/lib/server/constants';
 import { AccessTokenPayload, RefreshTokenPayload, SessionUser, AuthError } from '@/lib/auth/types';
-import { verifyJWT, generateJWT } from '@/lib/auth/common';
+import { verifyJWT } from '@/lib/auth/common';
 
 /**
  * 用户登录
@@ -96,7 +93,7 @@ export async function auth(): Promise<SessionUser | null> {
     }
 
     // 2. 验证 Access Token
-    const payload = verifyJWT<AccessTokenPayload>(accessToken, AUTH_SECRET);
+    const payload = await verifyJWT<AccessTokenPayload>(accessToken, AUTH_SECRET);
     
     // 3. Access Token 有效则返回用户信息
     if (payload) {
@@ -137,7 +134,7 @@ export async function authToken(): Promise<SessionUser | null> {
     if (!refreshToken) {
       throw new AuthError('No Refresh Token');
     }
-    const refreshPayload = verifyJWT<RefreshTokenPayload>(refreshToken, AUTH_SECRET);
+    const refreshPayload = await verifyJWT<RefreshTokenPayload>(refreshToken, AUTH_SECRET);
     if (!refreshPayload) {
       throw new AuthError('Refresh Token verification failed');
     }
@@ -159,48 +156,15 @@ export async function authToken(): Promise<SessionUser | null> {
       image: existingUser.image,
     };
     return sessionUser;
-  }
-  catch (error) {
+  } catch (error) {
     if (error instanceof AuthError) {
-      logger.debug('Refresh Token 认证错误', error);
+      logger.debug('Refresh Token 认证错误', {
+        name: error.name,
+        msg: error.message
+      });
     } else {
       logger.error('Refresh Token 认证错误 (未知错误)', error);
     }
     return null;
   }
 }
-
-/**
- * 设置会话 Cookie
- */
-// export async function setSessionCookies(cookieStore: any, user: SessionUser, token?: string) {
-//   // 设置 Access Token Cookie
-//   const accessToken = generateJWT(user, ACCESS_TOKEN_EXPIRES_IN, AUTH_SECRET);
-//   cookieStore.set(ACCESS_TOKEN_COOKIE, accessToken, {
-//     httpOnly: true,
-//     // secure: process.env.NODE_ENV === 'production',
-//     sameSite: 'strict',
-//     maxAge: ACCESS_TOKEN_EXPIRES_IN,
-//   });
-
-//   // 设置 Refresh Token Cookie（如果提供）
-//   if (token) {
-//     const refreshToken = generateJWT({ id: user.id, token: token }, REFRESH_TOKEN_EXPIRES_IN, AUTH_SECRET);
-//     cookieStore.set(REFRESH_TOKEN_COOKIE, refreshToken, {
-//       httpOnly: true,
-//       // secure: process.env.NODE_ENV === 'production',
-//       sameSite: 'strict',
-//       maxAge: REFRESH_TOKEN_EXPIRES_IN,
-//     });
-//   }
-// }
-
-// /**
-//  * 清除会话 Cookie
-//  */
-// export async function clearSessionCookies() {
-//   const cookieStore = await cookies();
-  
-//   cookieStore.delete(ACCESS_TOKEN_COOKIE);
-//   cookieStore.delete(REFRESH_TOKEN_COOKIE);
-// }

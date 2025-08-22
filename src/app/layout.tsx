@@ -7,6 +7,7 @@ import NavBar from "@/ui/NavBar";
 import { getUserFromJWT } from "@/lib/auth/common";
 import { logger } from "@/lib/server/logger";
 import StoreInitializer from "@/ui/StoreInitializer";
+import DevButton from "@/ui/test/DevBtn";
 
 export const metadata: Metadata = {
   title: "My Readcast",
@@ -18,12 +19,12 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  logger.debug('SSR 渲染 RootLayout');
+  logger.debug('[RootLayout] SSR 渲染');
   
   const cookieStore = await cookies();
   const theme = cookieStore.get(THEME_COOKIE)?.value || 'light';
   const sessionUser = getUserFromJWT(cookieStore.get(ACCESS_TOKEN_COOKIE)?.value || '');
-  logger.debug('获取当前用户', sessionUser);
+  logger.debug('[RootLayout] 获取当前用户', { sessionUser });
   
   // return root layout template
   return (
@@ -33,6 +34,7 @@ export default async function RootLayout({
         <ThemeProvider initialTheme={theme}>
           <NavBar />
           {children}
+          <DevButton />
         </ThemeProvider>
       </body>
     </html>

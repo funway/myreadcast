@@ -4,6 +4,7 @@ export interface SessionUser {
   username: string;
   role: string;
   image?: string | null;
+  [key: string]: unknown;
 }
 
 // Access Token Payload 接口

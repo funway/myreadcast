@@ -8,8 +8,8 @@ import LogoutButton from '@/ui/LogoutBtn';
 const DEFAULT_AVATAR = 'https://api.dicebear.com/9.x/adventurer/svg?seed=default';
 
 const AvatarDropdown = () => {
+  console.log('[AvatarDropdown]');
   const sessionUser = useClientStatesStore(state => state.sessionUser);
-
   const isLoggedIn = !!sessionUser;
   // 获取头像URL
   const getAvatarUrl = () => {
@@ -38,34 +38,32 @@ const AvatarDropdown = () => {
       </div>
       
       {/* 下拉菜单 */}
-      <ul tabIndex={0} className="dropdown-content menu bg-base-200 rounded-box z-[1] mt-1 w-52 p-2 shadow">
-        <li className="menu-title text-xs">
-          {isLoggedIn ? sessionUser.username : 'Guest'}
-        </li>
+      { 
+        avatarSrc ? (
+          <ul tabIndex={0} className="dropdown-content menu bg-base-200 rounded-box z-[1] mt-1 w-52 p-2 shadow">
+            <li className="menu-title text-xs">
+              {isLoggedIn ? sessionUser.username : 'Guest'}
+            </li>
 
-        {process.env.NODE_ENV === 'development' && (
-          <li>
-            <Link href={'/test'}>Test Page</Link>
-          </li>
-        )}
+            <li>
+              <Link className="justify-between" href={'#'}>
+                Profile
+                <span className="badge">New</span>
+              </Link>
+            </li>
 
-        <li>
-          <Link className="justify-between" href={'#'}>
-            Profile
-            <span className="badge">New</span>
-          </Link>
-        </li>
+            <li>
+              <Link href={'/user/setting'}>
+                Setting
+              </Link>
+            </li>
 
-        <li>
-          <Link href={'/user/setting'}>
-            Setting
-          </Link>
-        </li>
-
-        <li>
-          <LogoutButton />
-        </li>
-      </ul>
+            <li>
+              <LogoutButton />
+            </li>
+          </ul>
+        ) : null
+      }
     </div>
   );
 };

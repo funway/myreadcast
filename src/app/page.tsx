@@ -1,4 +1,4 @@
-import TestUI from "@/ui/TestUI";
+import TestUI from "@/ui/test/TestUI";
 
 export default async function HomePage() {
   return (
