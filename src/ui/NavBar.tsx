@@ -2,13 +2,13 @@
 
 import Link from 'next/link';
 import ThemeSelector from '@/ui/ThemeSelector';
-import AvatarDropdown from './AvatarDropdown';
+import AvatarDropdown from './user/AvatarDropdown';
 
 const NavBar = () => {
   console.log('[NavBar]');
 
   return (
-    <div className="navbar bg-base-100 px-8 mb-10 shadow-sm">
+    <div className="navbar bg-base-100 px-8 shadow-sm">
       {/* Left side */}
       <div className="flex-1">
         <Link className="btn btn-ghost m-1 text-xl" href='/'>
@@ -32,7 +32,7 @@ const NavBar = () => {
         </div>
 
         {/* 搜索栏 */}
-        <input type="text" placeholder="Search" className="input input-bordered m-1 w-24 md:w-auto" />
+        <input name="search" type="text" placeholder="Search" className="input input-bordered m-1 w-24 md:w-auto" />
       </div>
 
       {/* Right side */}

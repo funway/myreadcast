@@ -1,6 +1,7 @@
 'use client';
 
-import { signOutAction } from "@/lib/server/actions";
+import { signOutAction } from "@/lib/server/actions/user";
+import { LOGOUT_REDIRECT } from "@/lib/shared/constants";
 import { useRouter } from "next/navigation";
 
 const LogoutButton = () => { 
@@ -12,8 +13,8 @@ const LogoutButton = () => {
         method: 'POST',
       });
       
-      router.push('/');  // push 会向目标路径发起一个 GET 请求: /path?_rsc=xxx, 按需渲染，不会重新生成 Rootlayout
-      router.refresh();  // refresh 会向当前路径发送一个 GET 请求: /path?_rsc=root, 全部重新渲染
+      router.push(LOGOUT_REDIRECT);  // push 会向目标路径发起一个 GET 请求: /path?_rsc=xxx, 按需渲染 (如果目标路径与当前路径的 layout 一样，就不会重新渲染 layout)
+      router.refresh();  // refresh 会向当前路径发送一个 GET 请求: /path?_rsc=root, 强制全部重新渲染
 
       // window.location.href = '/';  // 使用原始的 js 控制浏览器做重定向
       /**
@@ -31,7 +32,7 @@ const LogoutButton = () => {
     // <button className="w-full text-left" onClick={ handleLogout }>
     //   Logout
     // </button>
-    <button className="w-full text-left" onClick={() => signOutAction('/')}>
+    <button className="w-full text-left" onClick={() => signOutAction(LOGOUT_REDIRECT)}>
       Logout
     </button>
   );

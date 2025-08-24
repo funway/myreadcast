@@ -1,78 +1,46 @@
 import bcrypt from 'bcrypt';
 import { cookies } from 'next/headers';
-import { eq, sql } from 'drizzle-orm';
-import { createId } from '@paralleldrive/cuid2';
+import { eq } from 'drizzle-orm';
 
 import { logger } from '@/lib/server/logger';
-import { generateRandomToken } from '@/lib/server/helpers';
-import { db, initializeDatabase } from "@/lib/server/db/init";
+import { db } from "@/lib/server/db/init";
 import { UserTable } from "@/lib/server/db/schema";
-import { ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE, AUTH_SECRET } from '@/lib/server/constants';
-import { AccessTokenPayload, RefreshTokenPayload, SessionUser, AuthError } from '@/lib/auth/types';
-import { verifyJWT } from '@/lib/auth/common';
+import {
+  AUTH_SECRET, PASSWORD_BCRYPT_SALT_ROUNDS,
+  ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE,
+  ACCESS_TOKEN_EXPIRES_IN, REFRESH_TOKEN_EXPIRES_IN
+} from '@/lib/server/constants';
+import { AccessTokenPayload, RefreshTokenPayload, SessionUser, AuthError, WritableCookies } from '@/lib/auth/types';
+import { generateJWT, setSessionCookies, verifyJWT } from '@/lib/auth/common';
+import { getUserByUsername } from '../server/db/user';
 
-/**
- * 用户登录
- * @param username - 用户名
- * @param password - 密码
- * @returns SessionUser 或 null
- */
-export async function signIn(username: string, password: string): Promise< { user: SessionUser; token: string } | null> {
-  logger.debug('用户登录', {name: username, password: '***'});
-
-  // 1. 确保数据库已初始化
-  await initializeDatabase();
-
-  // 2. 检查 user 表是否为空
-  const userCountResult = await db.select({ count: sql<number>`count(*)` }).from(UserTable);
-  const userCount = userCountResult[0].count;
-  let user;
-
-  // 3. 如果 user 表为空，创建第一个用户作为 root
-  if (userCount === 0) {
-    console.log("No users found. Creating first user as root...");
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const token = generateRandomToken();
-    const newUser = {
-      id: createId(),
-      username: username,
-      password: hashedPassword,
-      token: token,
-      role: "root",
-      image: null,
-    }
-    
-    await db.insert(UserTable).values(newUser);
-    logger.info("First user created:", newUser);
-    user = newUser;
+export async function signIn(username: string, password: string, cookieStore: WritableCookies): Promise<SessionUser | null> { 
+  logger.debug('用户登录:', { name: username, password: '***' });
+  const existingUser = await getUserByUsername(username);
+  if (!existingUser) {
+    logger.debug("User not found:", {username});
+    return null;  // 用户不存在
   }
-  else { 
-    // 4. 如果表不为空，执行正常的登录验证
-    const existingUser = db.select().from(UserTable)
-      .where(eq(UserTable.username, username))
-      .get();
 
-    if (!existingUser) {
-      logger.debug("User not found:", {username});
-      return null;  // 用户不存在
-    }
-
-    const passwordMatch = await bcrypt.compare(password, existingUser.password);
-    if (!passwordMatch) {
-      logger.debug("Password mismatch for user:", {username});
-      return null;  // 密码不匹配
-    }
-    user = existingUser;
+  const passwordMatch = await bcrypt.compare(password, existingUser.password);
+  if (!passwordMatch) {
+    logger.debug("Password mismatch for user:", {username});
+    return null;  // 密码不匹配
   }
 
   const sessionUser: SessionUser = {
-    id: user.id,
-    username: user.username,
-    role: user.role,
-    image: user.image,
+    id: existingUser.id,
+    username: existingUser.username,
+    role: existingUser.role,
+    image: existingUser.image,
   };
+  logger.debug('Got user:', sessionUser);
   
-  return { user: sessionUser, token: user.token };
+  const accessToken = await generateJWT(sessionUser, ACCESS_TOKEN_EXPIRES_IN, AUTH_SECRET);
+  const refreshToken = await generateJWT({ id: sessionUser.id, token: existingUser.token }, REFRESH_TOKEN_EXPIRES_IN, AUTH_SECRET);
+  setSessionCookies(cookieStore, accessToken, refreshToken);
+  
+  return sessionUser;
 }
 
 /**

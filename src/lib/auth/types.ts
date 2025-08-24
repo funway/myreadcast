@@ -27,3 +27,16 @@ export class AuthError extends Error {
     this.name = 'AuthError';
   }
 }
+
+interface CookieOptions {
+  path?: string;
+  maxAge?: number;
+  httpOnly?: boolean;
+  secure?: boolean;
+  sameSite?: "strict" | "lax" | "none";
+}
+
+export interface WritableCookies {
+  set(name: string, value: string, options?: CookieOptions): void;
+  delete(name: string): void;
+}

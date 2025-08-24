@@ -28,7 +28,15 @@ export const db = drizzle(sqlite, { schema });
 let migrating = false;
 let migrationComplete = false;
 
-export async function initializeDatabase() {
+/**
+ * 初始化数据库
+ * 
+ * SQLite 的初始化操作是同步的, 所以不需要 await
+ * - 如果不存在，自动创建
+ * - 如果有未迁移表结构，自动迁移
+ * @returns 
+ */
+export function initializeDatabase() {
   if (migrationComplete || migrating) {
     return;
   }
@@ -37,7 +45,7 @@ export async function initializeDatabase() {
   try {
     console.log("Database initialization started...");
     // Drizzle 的 migrate 函数会自动应用所有尚未执行的迁移
-    await migrate(db, { migrationsFolder });
+    migrate(db, { migrationsFolder });
     migrationComplete = true;
     console.log("Database initialization complete.");
   } catch (error) {

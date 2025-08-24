@@ -3,7 +3,6 @@ import type { Metadata } from "next";
 import { cookies } from 'next/headers';
 import { ACCESS_TOKEN_COOKIE, THEME_COOKIE } from "@/lib/shared/constants";
 import { ThemeProvider } from "@/ui/contexts/ThemeContext";
-import NavBar from "@/ui/NavBar";
 import { getUserFromJWT } from "@/lib/auth/common";
 import { logger } from "@/lib/server/logger";
 import StoreInitializer from "@/ui/StoreInitializer";
@@ -32,7 +31,6 @@ export default async function RootLayout({
       <body>
         <StoreInitializer sessionUser={ sessionUser } />
         <ThemeProvider initialTheme={theme}>
-          <NavBar />
           {children}
           <DevButton />
         </ThemeProvider>

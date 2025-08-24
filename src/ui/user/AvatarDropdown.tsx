@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { UserIcon } from '@heroicons/react/24/solid';
 import { useClientStatesStore } from '@/lib/client/store';
-import LogoutButton from '@/ui/LogoutBtn';
+import LogoutButton from '@/ui/user/LogoutBtn';
 
 const DEFAULT_AVATAR = 'https://api.dicebear.com/9.x/adventurer/svg?seed=default';
 

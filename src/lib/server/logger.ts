@@ -25,6 +25,7 @@ interface LogEntry {
   level: LogLevel;
   message: string;
   extraData?: object | null;
+  error?: unknown,
   caller?: string;
 }
 
@@ -113,18 +114,32 @@ class Logger {
 
   // 格式化日志条目
   private formatLogEntry(entry: LogEntry): string {
-    const { timestamp, level, message, extraData, caller } = entry;
-    let logLine = `[${timestamp}] ${level} [${caller}]: ${message}`;
+    const { timestamp, level, message, extraData, error, caller } = entry;
+    let logContent = `[${timestamp}] ${level} [${caller}]: ${message}`;
     
     if (extraData) {
-      logLine += ` | ExtraData: ${JSON.stringify(extraData)}`;
+      logContent += ` | ExtraData: ${JSON.stringify(extraData)}`;
     }
     
-    return logLine + '\n';
+    if (error) {
+      let errorData: string | undefined;
+      if (error instanceof Error) {
+        errorData = error.stack;
+      } else {
+        try {
+          errorData = `Error: ${JSON.stringify(error)}`;
+        } catch {
+          errorData = `Error: String(error)`;
+        }
+      }
+      logContent += `\n  ${errorData}`;
+    }
+    
+    return logContent + '\n';
   }
 
-  // 获取日志文件名
-  private getLogFileName(type: 'app' | 'error' | 'access' = 'app'): string {
+  // 获取日志文件路径
+  private getLogFilePath(type: 'app' | 'error' | 'access' = 'app'): string {
     const date = new Date().toISOString().split('T')[0];
     return path.join(this.logDir, `${type}-${date}.log`);
   }
@@ -141,15 +156,15 @@ class Logger {
       caller: this.getCallerInfo(),
     };
 
-    const filePath = this.getLogFileName(logType);
-    const logLine = this.formatLogEntry(fullEntry);
+    const filePath = this.getLogFilePath(logType);
+    const logContent = this.formatLogEntry(fullEntry);
     
-    this.writeQueue.push({ filePath, content: logLine, retries: 0 });
+    this.writeQueue.push({ filePath, content: logContent, retries: 0 });
     
     this.processWriteQueue();
     
     if (process.env.NODE_ENV === 'development') {
-      console.log(logLine.trim());
+      console.log(logContent.trim());
     }
   }
 
@@ -270,36 +285,12 @@ class Logger {
 
   // 修正 error 方法，优化 Error 对象处理和数据合并逻辑
   public error(message: string, error?: unknown, extraData?: object | null) {
-    let finalExtraData = extraData;
-
-    // 如果有 Error 对象，将其信息合并到 extraData 中
-    if (error) {
-      let errorData: object | null;
-      if (error instanceof Error) {
-        // Error 类型, 展开详细信息
-        errorData = {
-          errorName: error.name,
-          errorMessage: error.message,
-          errorStack: error.stack
-        };
-      } else { 
-        // 非 Error 类型 (JavaScript 中 throw 出来的异常，可以是任意数据类型。。。)
-        try { 
-          errorData = { error: JSON.stringify(error) };
-        } catch {
-          errorData = { error: String(error) };
-        }
-      }
-      
-      // 将 error 信息和 extraData 合并
-      finalExtraData = extraData ? { ...extraData, ...errorData } : errorData;
-    }
-
     this.writeLog({
       timestamp: new Date().toISOString(),
       level: LogLevel.ERROR,
       message,
-      extraData: finalExtraData
+      extraData: extraData,
+      error: error
     }, 'error');
   }
 

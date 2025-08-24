@@ -1,7 +1,6 @@
 import { SignJWT, jwtVerify, decodeJwt } from 'jose';
 import { ACCESS_TOKEN_COOKIE, ACCESS_TOKEN_EXPIRES_IN, REFRESH_TOKEN_COOKIE, REFRESH_TOKEN_EXPIRES_IN } from '@/lib/shared/constants';
-import { AccessTokenPayload, SessionUser } from '@/lib/auth/types';
-import { cookies } from 'next/headers';
+import { AccessTokenPayload, SessionUser, WritableCookies } from '@/lib/auth/types';
 
 /**
  * 生成 JWT Token
@@ -54,8 +53,7 @@ export async function verifyJWT<T>(token: string, secret: string): Promise<T | n
  * @param accessToken - 用户的访问令牌
  * @param [refreshToken] - (可选) 用户的刷新令牌
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function setSessionCookies(cookieStore: any, accessToken: string, refreshToken?: string): void {
+export function setSessionCookies(cookieStore: WritableCookies, accessToken: string, refreshToken?: string): void {
   // 设置 Access Token Cookie
   cookieStore.set(ACCESS_TOKEN_COOKIE, accessToken, {
     httpOnly: true,
@@ -79,8 +77,7 @@ export function setSessionCookies(cookieStore: any, accessToken: string, refresh
  * 清除会话 cookies
  * @param cookieStore 
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function clearSessionCookies(cookieStore: any): void {
+export function clearSessionCookies(cookieStore: WritableCookies): void {
   cookieStore.delete(ACCESS_TOKEN_COOKIE);
   cookieStore.delete(REFRESH_TOKEN_COOKIE);
 }

@@ -87,10 +87,8 @@ export async function edgeAuth(request: NextRequest): Promise<EdgeAuthResult> {
   const sessionUser = await edgeAuthAccessToken();
 
   if (sessionUser) {
-    console.log('<edgeAuth> Access token 有效');
     return { sessionUser: sessionUser, newAccessToken: null };
   } else {
-    console.log('<edgeAuth> Access token 无效, 请求刷新');
     return edgeAuthRefreshToken(request);
   }
 }

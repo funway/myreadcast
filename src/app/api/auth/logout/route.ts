@@ -9,5 +9,9 @@ export async function POST(request: NextRequest) {
   logger.debug('用户退出', cookieStore.getAll());
 
   clearSessionCookies(cookieStore);
-  return NextResponse.json({ ok: true });  // API 不做重定向，只做数据更新。重定向由客户端自己完成
+  return NextResponse.json({ logout: true });  // API 不做重定向，只做数据更新。重定向由客户端自己完成
+}
+
+export async function GET(request: NextRequest) { 
+  return await POST(request);
 }

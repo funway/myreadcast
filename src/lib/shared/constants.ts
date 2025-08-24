@@ -17,3 +17,6 @@ export const DAISY_THEMES = [
   "acid", "lemonade", "night", "coffee", "winter", "dim", "nord",
   "sunset",
 ];
+
+export const LOGIN_REDIRECT = '/test';
+export const LOGOUT_REDIRECT = '/user/login';

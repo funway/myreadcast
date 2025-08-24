@@ -11,6 +11,7 @@ export const LOG_LEVEL = process.env.LOG_LEVEL ?? "INFO";
 // db
 export const DB_FILE = process.env.DB_FILE ?? path.join(BASE_PATH, 'database/myreadcast.db');
 export const DB_MIGRATION = process.env.DB_MIGRATION ?? path.join(BASE_PATH, 'database/drizzle');
+export const PASSWORD_BCRYPT_SALT_ROUNDS = 10;
 
 // auth
 export const AUTH_SECRET = (process.env.AUTH_SECRET ?? '').trim();
