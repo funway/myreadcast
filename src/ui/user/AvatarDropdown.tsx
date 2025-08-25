@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { UserIcon } from '@heroicons/react/24/solid';
-import { useClientStatesStore } from '@/lib/client/store';
+import { useClientStatesStore } from '@/ui/contexts/StoreContext';
 import LogoutButton from '@/ui/user/LogoutBtn';
 
 const AvatarDropdown = () => {

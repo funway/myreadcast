@@ -22,7 +22,7 @@ interface ThemeContextType {
 // 2. 使用 React.createContext() 创建一个 React Context 类型的实例 themeContext
 // 并且通过泛型 T 声明这个 Context 的 .Provider.value 属性是 ThemeContextType 类型的
 // 所以此时，themeContext 是一个 Context 类型实例, 它包含两个重要属性 .Provider 与 .Consumer
-const themeContext = createContext<ThemeContextType | undefined>(undefined);
+const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 // 3. 定义并导出 ThemeProvider 客户端组件
 export const ThemeProvider = ({ initialTheme, children }: { initialTheme: string; children: ReactNode }) => {
@@ -42,15 +42,15 @@ export const ThemeProvider = ({ initialTheme, children }: { initialTheme: string
   // c. 将步骤 b 获得的 value 作为 themeContext.Provider.value 属性的值 
   // 这样，所有被其包裹的 children 组件都可以通过 useContext(themeContext) 获得这个 value 对象 {theme, setTheme}
   return (
-    <themeContext.Provider value={value}>
+    <ThemeContext.Provider value={value}>
       {children}
-    </themeContext.Provider>
+    </ThemeContext.Provider>
   );
 };
 
 // 4. 定义并导出 Hook，方便在客户端组件中使用 ThemeContext
 export const useTheme = () => {
-  const context = useContext(themeContext);
+  const context = useContext(ThemeContext);
   if (context === undefined) {
     throw new Error('useTheme must be used within a ThemeProvider');
   }

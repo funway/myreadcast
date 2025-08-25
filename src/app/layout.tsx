@@ -5,8 +5,8 @@ import { ACCESS_TOKEN_COOKIE, THEME_COOKIE } from "@/lib/shared/constants";
 import { ThemeProvider } from "@/ui/contexts/ThemeContext";
 import { getUserFromJWT } from "@/lib/auth/common";
 import { logger } from "@/lib/server/logger";
-import StoreInitializer from "@/ui/StoreInitializer";
 import DevButton from "@/ui/test/DevBtn";
+import { StatesStoreProvider } from "@/ui/contexts/StoreContext";
 
 export const metadata: Metadata = {
   title: "My Readcast",
@@ -24,16 +24,21 @@ export default async function RootLayout({
   const theme = cookieStore.get(THEME_COOKIE)?.value || 'light';
   const sessionUser = getUserFromJWT(cookieStore.get(ACCESS_TOKEN_COOKIE)?.value || '');
   logger.debug('[RootLayout] 获取当前用户', { sessionUser });
-  
+  const initStates = { sessionUser: sessionUser, count: 0 };
+
   // return root layout template
   return (
     <html lang="en" data-theme={theme}>
       <body>
-        <StoreInitializer sessionUser={ sessionUser } />
-        <ThemeProvider initialTheme={theme}>
-          {children}
-          <DevButton />
-        </ThemeProvider>
+        <StatesStoreProvider initStates={initStates}>
+          <ThemeProvider initialTheme={theme}>
+            
+            {children}
+
+            <DevButton />
+
+          </ThemeProvider>
+        </StatesStoreProvider>
       </body>
     </html>
   );

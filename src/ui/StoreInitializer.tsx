@@ -1,7 +1,10 @@
 'use client';
-
+/**
+ * 使用 StoreInitializer 组件相比于 StatesStoreProvider 组件来说
+ * 
+ */
 import { SessionUser } from "@/lib/auth/types";
-import { useClientStatesStore } from "@/lib/client/store";
+import { useClientStatesStore } from "@/lib/client/store-hook";
 import { useEffect } from "react";
 
 interface StoreInitializerProps { 

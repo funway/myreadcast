@@ -1,6 +1,7 @@
 'use client';
 
-import { useClientStatesStore } from "@/lib/client/store";
+import { ClientStatesStore } from '@/lib/client/store';
+import { useClientStatesStore } from '@/ui/contexts/StoreContext';
 
 export default function TestUI() {
   const { sessionUser, setSessionUser, count, increaseCount } = useClientStatesStore();
@@ -9,10 +10,10 @@ export default function TestUI() {
     // 使用 ClientStates.count 的其他组件也会刷新
     increaseCount();
     
-    if (sessionUser) {
-      // 使用 ClientStates.sessionUser 的其他组件也会刷新
-      setSessionUser({ ...sessionUser, username: 'new name' });
-    }
+    // if (sessionUser) {
+    //   // 使用 ClientStates.sessionUser 的其他组件也会刷新
+    //   setSessionUser({ ...sessionUser, username: 'new name' });
+    // }
   }
   
   return (

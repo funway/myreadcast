@@ -4,7 +4,7 @@ import Link from 'next/link';
 import ThemeSelector from '@/ui/ThemeSelector';
 import AvatarDropdown from './user/AvatarDropdown';
 import { Cog6ToothIcon } from '@heroicons/react/24/outline';
-import { useClientStatesStore } from '@/lib/client/store';
+import { useClientStatesStore } from '@/ui/contexts/StoreContext';
 
 const NavBar = () => {
   const sessionUser = useClientStatesStore(state => state.sessionUser);
@@ -43,12 +43,14 @@ const NavBar = () => {
 
       {/* Right side */}
       <div className="navbar-end">
-        <ThemeSelector />
         {isAdmin && (
           <Link href="/admin" className="btn btn-ghost btn-circle">
             <Cog6ToothIcon className="h-6 w-6" />
           </Link>
         )}
+        
+        <ThemeSelector />
+
         <AvatarDropdown />
       </div>
     </div>
