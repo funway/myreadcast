@@ -9,7 +9,7 @@ interface StoreInitializerProps {
 }
 
 export default function StoreInitializer({ sessionUser }: StoreInitializerProps) { 
-  console.log('[StoreInitializer] refresh:', sessionUser);
+  console.log('[StoreInitializer] sessionUser:', sessionUser);
 
   // 从 ClientStates 对象中取出 setSessionUser 函数
   const setSessionUser = useClientStatesStore(state => state.setSessionUser);

@@ -5,12 +5,11 @@ import { UserIcon } from '@heroicons/react/24/solid';
 import { useClientStatesStore } from '@/lib/client/store';
 import LogoutButton from '@/ui/user/LogoutBtn';
 
-const DEFAULT_AVATAR = 'https://api.dicebear.com/9.x/adventurer/svg?seed=default';
-
 const AvatarDropdown = () => {
-  console.log('[AvatarDropdown]');
   const sessionUser = useClientStatesStore(state => state.sessionUser);
+  console.log('[AvatarDropdown] sessionUser:', sessionUser);
   const isLoggedIn = !!sessionUser;
+
   // 获取头像URL
   const getAvatarUrl = () => {
     if (!isLoggedIn) return null;

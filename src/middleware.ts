@@ -95,16 +95,18 @@ export default async function middleware(request: NextRequest) {
       : NextResponse.next();
   }
 
-  // - 用户登录检查
+  // - 用户登录检查 (未登录的跳转到登录页面)
   if (!response && !isLoggedIn) { 
     console.log('<middleware> Unauthenticated. Redirect to login page.');
     response = NextResponse.redirect(new URL('/user/login', request.url));
   }
 
-  // - 用户权限检查 (user.role == admin 的才有权限访问 /admin 下面的页面, 否则返回 404)
+  // - 用户权限检查 (无权限的用户跳转到 404)
   if (!response && nextUrl.pathname.startsWith('/admin')) {
-    cookieJar.set('test_cookie', 'you_have_no_permission');
-    response = NextResponse.rewrite(new URL('/not-found', request.url));
+    if (sessionUser?.role !== 'admin') { 
+      cookieJar.set('test_cookie', 'you_have_no_permission');
+      response = NextResponse.rewrite(new URL('/not-found', request.url));
+    }
   }
   
   if (!response) {

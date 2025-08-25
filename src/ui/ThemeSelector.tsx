@@ -15,10 +15,10 @@ const ThemePreview = ({ theme }: { theme: string }) => (
 
 const ThemeSelector = () => {
   const { theme, setTheme } = useTheme();
+  console.log('[ThemeSelector] useTheme:', theme);
   const handleThemeChange = (newTheme: string) => {
     setTheme(newTheme);
   };
-  console.log('[ThemeSelector]');
 
   return (
     <div title="Change Theme" className="dropdown dropdown-end">

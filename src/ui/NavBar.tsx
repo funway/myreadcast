@@ -3,14 +3,18 @@
 import Link from 'next/link';
 import ThemeSelector from '@/ui/ThemeSelector';
 import AvatarDropdown from './user/AvatarDropdown';
+import { Cog6ToothIcon } from '@heroicons/react/24/outline';
+import { useClientStatesStore } from '@/lib/client/store';
 
 const NavBar = () => {
-  console.log('[NavBar]');
+  const sessionUser = useClientStatesStore(state => state.sessionUser);
+  console.log('[NavBar] sessionUser:', sessionUser);
+  const isAdmin = sessionUser?.role === 'admin';
 
   return (
     <div className="navbar bg-base-100 px-8 shadow-sm">
       {/* Left side */}
-      <div className="flex-1">
+      <div className="navbar-start">
         <Link className="btn btn-ghost m-1 text-xl" href='/'>
           <img src="/logo.svg" alt="Logo" className='w-10' />
           My Readcast
@@ -30,14 +34,21 @@ const NavBar = () => {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
           </svg>
         </div>
+      </div>
 
+      <div className="navbar-center">
         {/* 搜索栏 */}
-        <input name="search" type="text" placeholder="Search" className="input input-bordered m-1 w-24 md:w-auto" />
+        <input name="search" type="text" placeholder="Search" className="input input-bordered md:w-auto" />
       </div>
 
       {/* Right side */}
-      <div className="flex-1 flex justify-end items-center">
+      <div className="navbar-end">
         <ThemeSelector />
+        {isAdmin && (
+          <Link href="/admin" className="btn btn-ghost btn-circle">
+            <Cog6ToothIcon className="h-6 w-6" />
+          </Link>
+        )}
         <AvatarDropdown />
       </div>
     </div>

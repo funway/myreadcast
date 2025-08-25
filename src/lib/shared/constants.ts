@@ -1,3 +1,6 @@
+export const APP_NAME = 'MyReadcast';
+export const APP_VERSION = '0.1.1';
+
 // access token 有效期，单位为秒 (例如：30分钟)
 export const ACCESS_TOKEN_EXPIRES_IN = 30 * 60;
 // refresh token 有效期，单位为秒 (例如：7天)
