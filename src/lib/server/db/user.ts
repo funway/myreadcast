@@ -1,11 +1,10 @@
 import { eq } from "drizzle-orm";
 import bcrypt from 'bcrypt';
-import { db } from "./init";
+import { db } from "@/lib/server/db";
 import { UserTable } from "./schema";
 import { createId } from '@paralleldrive/cuid2';
 import { generateRandomToken } from "../helpers";
 import { PASSWORD_BCRYPT_SALT_ROUNDS } from "../constants";
-import { logger } from "../logger";
 
 // --- 类型定义 (利用 Drizzle 的类型推断) ---
 export type User = typeof UserTable.$inferSelect;
@@ -43,7 +42,7 @@ export async function createUser(data: NewUser) {
 
 export async function getUserById(id: string) {
   // query 写法
-  return db.query.UserTable.findFirst({
+  return await db.query.UserTable.findFirst({
     where: eq(UserTable.id, id),
   });
 }
@@ -65,7 +64,7 @@ export async function updateUserToken(id: string, token: string) {
 }
 
 export async function getAdmins() {
-  return db.query.UserTable.findMany(
+  return await db.query.UserTable.findMany(
     {
       where: eq(UserTable.role, 'admin'),
     }

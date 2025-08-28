@@ -1,20 +1,18 @@
-import { initializeDatabase } from "@/lib/server/db/init";
 import { getAdmins } from "@/lib/server/db/user";
 import { CreateRootForm } from "@/ui/user/CreateForm";
 import LoginForm from "@/ui/user/LoginForm";
 import { BookOpenIcon, CircleStackIcon, ExclamationTriangleIcon, UserGroupIcon } from "@heroicons/react/24/outline";
 import { DB_FILE } from '@/lib/server/constants';
 
-export default async function HomePage() {
-  // 1. 初始化数据库
-  initializeDatabase();
+export default async function InitPage() {
   const admins = await getAdmins();
   const hasAdmin = admins.length > 0;
+  console.log('[InitPage] Rendered', { hasAdmin });
 
 	return (
     <main className="flex min-h-screen items-center justify-center bg-base-300 p-4">
       {/* "Book" Container: holds the two cards */}
-      <div className="flex w-full max-w-4xl flex-col overflow-hidden rounded-2xl shadow-2xl md:flex-row">
+      <div className="flex w-full max-w-4xl flex-col overflow-hidden rounded-lg shadow-2xl md:flex-row">
         
         {/* Left Card: Setup Status */}
         <div className="card w-full rounded-none bg-base-100 p-8 md:w-1/2">

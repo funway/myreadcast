@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { text, integer, sqliteTable, check } from "drizzle-orm/sqlite-core";
+import { text, integer, sqliteTable, check, real } from "drizzle-orm/sqlite-core";
 
 const timestamps = {
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
@@ -24,7 +24,7 @@ export const UserTable = sqliteTable('user',
 
 export const LibraryTable = sqliteTable('library', {
   id: text('id').primaryKey(),
-  name: text('name').notNull(),
+  name: text('name').notNull().unique(),
   icon: text('icon').notNull(),
   ...timestamps,
 });
@@ -57,5 +57,7 @@ export const MediaProgressTable = sqliteTable('media_progress', {
   id: text('id').primaryKey(),
   userId: text('user_id').notNull(),
   bookId: text('book_id').notNull(),
+  progress: real('progress').notNull().default(0),
+  position: text('position', { mode: 'json' }),
   ...timestamps,
 });

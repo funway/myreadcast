@@ -1,20 +1,28 @@
 'use client';
 
-import React, { act, useActionState, useEffect, useState } from 'react';
+import React, { useActionState, useEffect, useState } from 'react';
 import { createAction } from '@/lib/server/actions/user';
-import { UserIcon, KeyIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
 import { useRouter } from "next/navigation";
+import MyIcon from '@/ui/MyIcon';
+import { ActionResult } from '@/lib/shared/types';
+import { LOGIN_REDIRECT } from '@/lib/shared/constants';
 
 export function CreateRootForm({ caption = "Create Root User", className = "space-y-6" }) {
+  console.log('[CreateRootForm] Rendered');
+  
   const [actionResult, formAction, isPending] = useActionState(
-    createAction,
+    async (_prevState: ActionResult | undefined, formData: FormData) => {
+      return await createAction(formData, LOGIN_REDIRECT);
+    },
     undefined,
   );
+
   const router = useRouter();
 
   useEffect(() => {
+    console.log('[CreateRootForm] Action Result:', actionResult);
     if (actionResult?.success) {
-      router.push('/test');
+      // router.push('/test');
       // router.refresh();
     }
   }, [actionResult]);
@@ -49,7 +57,7 @@ export function CreateRootForm({ caption = "Create Root User", className = "spac
             defaultValue = "root"
             required
           />
-          <UserIcon className="order-1 h-[18px] w-[18px] text-base-content/40 peer-focus:text-base-content/80" />
+          <MyIcon iconName="user" className="order-1 h-[18px] w-[18px] text-base-content/40 peer-focus:text-base-content/80" />
         </div>
       </div>
 
@@ -70,7 +78,7 @@ export function CreateRootForm({ caption = "Create Root User", className = "spac
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
-          <KeyIcon className="order-1 h-[18px] w-[18px] text-base-content/40 peer-focus:text-base-content/80" />
+          <MyIcon iconName="key" className="order-1 h-[18px] w-[18px] text-base-content/40 peer-focus:text-base-content/80" />
         </div>
       </div>
 
@@ -96,7 +104,7 @@ export function CreateRootForm({ caption = "Create Root User", className = "spac
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
           />
-          <KeyIcon className="order-1 h-[18px] w-[18px] text-base-content/40 peer-focus:text-base-content/80" />
+          <MyIcon iconName="key" className="order-1 h-[18px] w-[18px] text-base-content/40 peer-focus:text-base-content/80" />
         </div>
       </div>
 
@@ -129,7 +137,7 @@ export function CreateRootForm({ caption = "Create Root User", className = "spac
         >
           {isPending && <span className="loading loading-spinner"></span>}
           Create
-          {!isPending && <ArrowRightIcon className="w-5 h-5" />}
+          {!isPending && <MyIcon iconName="arrowRight" className="w-5 h-5" />}
         </button>
       </div>
     </form>

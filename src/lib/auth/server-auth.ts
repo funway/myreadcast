@@ -3,7 +3,6 @@ import { cookies } from 'next/headers';
 import { eq } from 'drizzle-orm';
 
 import { logger } from '@/lib/server/logger';
-import { db } from "@/lib/server/db/init";
 import { UserTable } from "@/lib/server/db/schema";
 import {
   AUTH_SECRET, PASSWORD_BCRYPT_SALT_ROUNDS,
@@ -12,7 +11,7 @@ import {
 } from '@/lib/server/constants';
 import { AccessTokenPayload, RefreshTokenPayload, SessionUser, AuthError, WritableCookies } from '@/lib/auth/types';
 import { generateJWT, setSessionCookies, verifyJWT } from '@/lib/auth/common';
-import { getUserByUsername } from '../server/db/user';
+import { getUserById, getUserByUsername } from '../server/db/user';
 
 export async function signIn(username: string, password: string, cookieStore: WritableCookies): Promise<SessionUser | null> { 
   logger.debug('用户登录:', { name: username, password: '***' });
@@ -108,9 +107,10 @@ export async function authToken(): Promise<SessionUser | null> {
     }
 
     // 2. 验证 Refresh Token 中的 token 与数据库是否一致
-    const existingUser = db.select().from(UserTable)
-      .where(eq(UserTable.id, refreshPayload.id))
-      .get();
+    const existingUser = await getUserById(refreshPayload.id);
+      // db.select().from(UserTable)
+      // .where(eq(UserTable.id, refreshPayload.id))
+      // .get();
     if (!existingUser || existingUser.token !== refreshPayload.token) { 
       logger.info('用户 refresh_token 不匹配', existingUser);
       throw new AuthError('Refresh Token does not match stored token');

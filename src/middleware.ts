@@ -41,6 +41,25 @@ function isPublicPath(pathname: string): boolean {
 }
 
 /**
+ * 判断是否是 保护访问的路径 (需 admin 权限)
+ * @param pathname 
+ * @returns 
+ */
+function isProtectedPath(pathname: string): boolean {
+  // 允许匿名访问的 URL 路径
+  // 只支持 完全匹配 与 * 号的前缀匹配
+  const protectedPaths = ['/admin*', '/api/server*'];
+
+  return protectedPaths.some((protectedPath) => { 
+    if (protectedPath.endsWith('*')) { 
+      const base = protectedPath.slice(0, -1);
+      return pathname.startsWith(base);
+    }
+    return pathname === protectedPath;
+  });
+}
+
+/**
  * 判断是否是 登录、注册或者初始化页面 (已登录用户不允许访问)
  * @param pathname 
  * @returns 
@@ -62,14 +81,14 @@ export default async function middleware(request: NextRequest) {
 
   // - 如果是访问公开路径, 直接返回
   if (isPublicPath(nextUrl.pathname)) { 
-    console.log('<middleware> public path, return directly');
+    console.log('<middleware> Access public path >> Allowed');
     return NextResponse.next();
   }
   console.log('<middleware> not public path');
 
   // - 获取当前用户
   const { sessionUser, newAccessToken } = await edgeAuth(request);
-  console.log('<middleware> Get user from edgeAuth:', sessionUser);
+  console.log('<middleware> Get user from edgeAuth:', { user: sessionUser?.username });
   const isLoggedIn = !!sessionUser;
   if (newAccessToken) { 
     // 如果需要刷新 Access Token
@@ -90,21 +109,26 @@ export default async function middleware(request: NextRequest) {
 
   // - 如果访问的是 登录、注册或初始化 页面
   if (isLoginOrRegisterPath(nextUrl.pathname)) {
-    response = isLoggedIn
-      ? NextResponse.redirect(new URL(LOGIN_REDIRECT, request.url))
-      : NextResponse.next();
+    if (isLoggedIn) {
+      console.log(`<middleware> Access ${nextUrl.pathname}, with authenticated status >> Redirect to ${LOGIN_REDIRECT}`);
+      response = NextResponse.redirect(new URL(LOGIN_REDIRECT, request.url));
+    } else { 
+      console.log(`<middleware> Access ${nextUrl.pathname}, with unauthenticated status >> Allowed`);
+      response = NextResponse.next();
+    }
   }
 
   // - 用户登录检查 (未登录的跳转到登录页面)
   if (!response && !isLoggedIn) { 
-    console.log('<middleware> Unauthenticated. Redirect to login page.');
+    console.log('<middleware> Unauthenticated >> Redirect to login page.');
     response = NextResponse.redirect(new URL('/user/login', request.url));
   }
 
   // - 用户权限检查 (无权限的用户跳转到 404)
-  if (!response && nextUrl.pathname.startsWith('/admin')) {
+  if (!response && isProtectedPath(nextUrl.pathname)) {
+    console.log('<middleware> try to access Protected Path. Check user role...');
     if (sessionUser?.role !== 'admin') { 
-      cookieJar.set('test_cookie', 'you_have_no_permission');
+      console.log('<middleware> Unauthorized access to protected path >> Redirect to /not-found');
       response = NextResponse.rewrite(new URL('/not-found', request.url));
     }
   }

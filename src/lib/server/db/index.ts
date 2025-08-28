@@ -1,10 +1,12 @@
-import { drizzle } from 'drizzle-orm/better-sqlite3';
-import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
-import Database from 'better-sqlite3';
 import fs from 'fs';
 import path from 'path';
-import * as schema from '@/lib/server/db/schema'; // 确保路径正确
+import { createClient } from "@libsql/client";
+import { drizzle } from 'drizzle-orm/libsql';
+import { migrate } from 'drizzle-orm/libsql/migrator';
+
+import * as schema from '@/lib/server/db/schema';
 import { DB_FILE, DB_MIGRATION } from '@/lib/server/constants';
+import { logger } from '../logger';
 
 // 从环境变量读取路径，如果未设置则使用默认值
 const dbPath = DB_FILE!;
@@ -19,7 +21,9 @@ if (!fs.existsSync(dbDir)) {
 }
 
 // 使用 better-sqlite3 初始化数据库连接 (如果 dbPath 不存在，则会自动创建)
-const sqlite = new Database(dbPath);
+const sqlite = createClient({
+  url: `file:${dbPath}`,
+});
 
 // 创建 db 对象并导出供外部使用
 export const db = drizzle(sqlite, { schema });
@@ -36,22 +40,25 @@ let migrationComplete = false;
  * - 如果有未迁移表结构，自动迁移
  * @returns 
  */
-export function initializeDatabase() {
+function initializeDatabase() {
   if (migrationComplete || migrating) {
     return;
   }
 
   migrating = true;
   try {
-    console.log("Database initialization started...");
+    logger.debug("Database initialization started...");
     // Drizzle 的 migrate 函数会自动应用所有尚未执行的迁移
     migrate(db, { migrationsFolder });
     migrationComplete = true;
-    console.log("Database initialization complete.");
+    logger.debug("Database initialization complete.");
   } catch (error) {
-    console.error("Database migration failed:", error);
+    logger.error("Database migration failed:", error);
     process.exit(1);
   } finally {
     migrating = false;
   }
 }
+
+// 在模块加载时立即初始化数据库
+initializeDatabase();

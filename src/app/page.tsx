@@ -5,10 +5,6 @@ export default async function HomePage() {
   return (
     <>
       <main>
-        {/* 主容器：使用 DaisyUI 的 hero 组件实现全屏居中布局。
-          min-h-screen 确保容器至少占满整个屏幕高度。
-          bg-base-200 提供一个基础底色，bg-noise 在其上叠加噪点纹理。
-        */}
         <div className="hero bg-base-200 min-h-screen">
           
           {/* 内容容器，实现垂直和水平居中 */}

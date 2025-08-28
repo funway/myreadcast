@@ -18,13 +18,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       <div className="flex-1 flex">
         
         {/* 左侧侧边栏 */}
-        <aside className="flex-none bg-base-100 w-1/9 py-4">
+        <aside className="flex-none bg-base-100 w-1/8 py-4">
           <SideBar />
         </aside>
 
         {/* 内容区域 */}
-        <main className="flex-1 p-8">
-          <div className="bg-base-100 shadow-md rounded-lg p-6 min-h-full">
+        <main className="flex-1 p-8 flex justify-center items-start">
+          <div className="bg-base-100 shadow-md rounded-lg p-6 min-w-2/3 min-h-2/3">
             {children}
           </div>
         </main>

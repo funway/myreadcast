@@ -8,6 +8,7 @@ import {
   UsersIcon,
 } from '@heroicons/react/24/outline'
 import { APP_NAME, APP_VERSION } from '@/lib/shared/constants'
+import MyIcon from '../MyIcon'
 
 export default function SideBar() {
   const pathname = usePathname() // 获取当前路径，用于高亮
@@ -16,17 +17,17 @@ export default function SideBar() {
     { 
       label: 'System', 
       href: '/admin', 
-      icon: <Cog6ToothIcon className="w-5 h-5" /> 
+      icon: <MyIcon iconName="setting" /> 
     },
     { 
       label: 'Libraries', 
       href: '/admin/libraries', 
-      icon: <BuildingLibraryIcon className="w-5 h-5" /> 
+      icon: <MyIcon iconName="libraryBuilding" /> 
     },
     { 
       label: 'Users', 
       href: '/admin/users', 
-      icon: <UsersIcon className="w-5 h-5" /> 
+      icon: <MyIcon iconName="users" /> 
     },
   ]
 

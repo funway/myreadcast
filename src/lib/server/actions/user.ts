@@ -3,10 +3,11 @@ import { z } from 'zod';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { signIn } from '@/lib/auth/server-auth';
-import { generateJWT, setSessionCookies, clearSessionCookies } from '@/lib/auth/common';
-import { ACCESS_TOKEN_EXPIRES_IN, AUTH_SECRET, LOGIN_REDIRECT, LOGOUT_REDIRECT, PASSWORD_BCRYPT_SALT_ROUNDS, REFRESH_TOKEN_EXPIRES_IN } from '@/lib/server/constants';
+import { clearSessionCookies } from '@/lib/auth/common';
+import { LOGIN_REDIRECT, LOGOUT_REDIRECT } from '@/lib/server/constants';
 import { logger } from '@/lib/server/logger';
 import { createUser } from '@/lib/server/db/user';
+import { ActionResult } from '@/lib/shared/types';
 
 // 定义登录表单的数据结构和验证规则
 const LoginFormSchema = z.object({
@@ -64,9 +65,9 @@ const CreateUserSchema = z.object({
 });
 
 export async function createAction(
-  _prevState: { success: boolean; message: string; } | undefined,
   formData: FormData,
-): Promise<{ success: boolean; message: string; }> {
+  redirectTo?: string,
+): Promise<ActionResult> {
   const data = Object.fromEntries(formData.entries());
   const validationResult = CreateUserSchema.safeParse(data);
   if (!validationResult.success) { 
@@ -97,5 +98,9 @@ export async function createAction(
       message: String(error),
     };
   }
+  if (redirectTo) {
+    redirect(redirectTo);
+  }
+
   return { success: true, message: 'User created' };
 ;}

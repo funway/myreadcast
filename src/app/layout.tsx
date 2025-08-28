@@ -24,9 +24,8 @@ export default async function RootLayout({
   const theme = cookieStore.get(THEME_COOKIE)?.value || 'light';
   const sessionUser = getUserFromJWT(cookieStore.get(ACCESS_TOKEN_COOKIE)?.value || '');
   logger.debug('[RootLayout] 获取当前用户', { sessionUser });
-  const initStates = { sessionUser: sessionUser, count: 0 };
+  const initStates = { sessionUser: sessionUser, count: sessionUser ? 1 : 0 };
 
-  // return root layout template
   return (
     <html lang="en" data-theme={theme}>
       <body>

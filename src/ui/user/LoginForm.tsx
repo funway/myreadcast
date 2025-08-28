@@ -2,9 +2,10 @@
 
 import React, { useActionState } from 'react';
 import { signInAction } from '@/lib/server/actions/user';
-import { UserIcon, KeyIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
+import MyIcon from '@/ui/MyIcon';
 
 export default function LoginForm({ caption = "Login", className = "space-y-6" }) {
+  console.log('[LoginForm] Rendered');
   // 使用 useActionState 来管理表单状态
   // 它接受两个必填参数 [action, initialState]
   //  - action 指向要执行的服务端函数, 我们这里是 authenticatie()
@@ -37,7 +38,7 @@ export default function LoginForm({ caption = "Login", className = "space-y-6" }
             placeholder="Enter your username"
             required
           />
-          <UserIcon className="order-1 h-[18px] w-[18px] text-base-content/40 peer-focus:text-base-content/80" />
+          <MyIcon iconName="user" className="order-1 h-[18px] w-[18px] text-base-content/40 peer-focus:text-base-content/80" />
         </div>
       </div>
 
@@ -56,7 +57,7 @@ export default function LoginForm({ caption = "Login", className = "space-y-6" }
             required
             minLength={4}
           />
-          <KeyIcon className="order-1 h-[18px] w-[18px] text-base-content/40 peer-focus:text-base-content/80" />
+          <MyIcon iconName="key" className="order-1 h-[18px] w-[18px] text-base-content/40 peer-focus:text-base-content/80" />
         </div>
       </div>
 
@@ -89,7 +90,7 @@ export default function LoginForm({ caption = "Login", className = "space-y-6" }
         >
           {isPending && <span className="loading loading-spinner"></span>}
           Log in
-          {!isPending && <ArrowRightIcon className="w-5 h-5" />}
+          {!isPending && <MyIcon iconName="arrowRight" className="w-5 h-5" />}
         </button>
       </div>
     </form>

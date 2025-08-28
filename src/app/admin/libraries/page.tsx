@@ -1,8 +1,11 @@
-export default function AdminLibrariesPage() {
+import { getLibrariesData } from '@/lib/server/actions/library';
+import LibrariesPanel from '@/ui/admin/LibrariesPanel';
+
+export default async function AdminLibrariesPage() {
+  const libraries = await getLibrariesData();
+  console.log('[AdminLibrariesPage] get all libraries:', libraries);
+  
   return (
-    <div>
-      {/* 用户列表页面内容 */}
-      Admin - Libraries
-    </div>
+    <LibrariesPanel initLibraries={ libraries } />
   );
 }
