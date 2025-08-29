@@ -18,6 +18,7 @@ export const config = {
     '/api/:path*',
     '/admin/:path*',
     '/user/:path*',
+    '/library/:path*',
   ],
 };
 

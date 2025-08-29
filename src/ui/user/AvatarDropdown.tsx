@@ -7,7 +7,7 @@ import LogoutButton from '@/ui/user/LogoutBtn';
 
 const AvatarDropdown = () => {
   const sessionUser = useClientStatesStore(state => state.sessionUser);
-  console.log('[AvatarDropdown] sessionUser:', sessionUser);
+  console.log('[AvatarDropdown] sessionUser:', sessionUser?.username);
   const isLoggedIn = !!sessionUser;
 
   // 获取头像URL

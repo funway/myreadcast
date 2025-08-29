@@ -4,7 +4,7 @@ import path from 'path';
 import { LOG_DIR, LOG_MAX_FILES, LOG_MAX_FILE_SIZE, LOG_LEVEL } from './constants';
 
 // 定义日志级别
-export enum LogLevel {
+enum LogLevel {
   DEBUG = 'DEBUG',
   INFO = 'INFO',
   WARN = 'WARN',
@@ -67,14 +67,17 @@ class Logger {
     
     this.ensureLogDirectory();
     
-    console.log('Logger initialized with config:', {
-      logDir: this.logDir,
-      maxFileSize: this.maxFileSize,
-      maxFiles: this.maxFiles,
-      batchSize: this.batchSize,
-      maxRetries: this.maxRetries,
-      minLevel: this.minLevel,
-    });
+    console.log(`pid:${process.pid}`,
+      'Logger initialized with config:',
+      {
+        logDir: this.logDir,
+        maxFileSize: this.maxFileSize,
+        maxFiles: this.maxFiles,
+        batchSize: this.batchSize,
+        maxRetries: this.maxRetries,
+        minLevel: this.minLevel,
+      }
+    );
   }
 
   // 确保日志目录存在
@@ -115,7 +118,7 @@ class Logger {
   // 格式化日志条目
   private formatLogEntry(entry: LogEntry): string {
     const { timestamp, level, message, extraData, error, caller } = entry;
-    let logContent = `[${timestamp}] ${level} [${caller}]: ${message}`;
+    let logContent = `[${timestamp}] ${level} pid:${process.pid} [${caller}]: ${message}`;
     
     if (extraData) {
       logContent += ` | ExtraData: ${JSON.stringify(extraData)}`;
@@ -291,7 +294,7 @@ class Logger {
       message,
       extraData: extraData,
       error: error
-    }, 'error');
+    }, 'app');
   }
 
   // 访问日志 - 添加 extraData 参数
@@ -307,7 +310,7 @@ class Logger {
       level: LogLevel.INFO,
       message: `${method} ${url} ${statusCode} ${responseTime}ms`,
       extraData
-    }, 'access');
+    }, 'app');
   }
 
   // 优雅关闭 - 确保所有日志都写入完成
@@ -325,10 +328,23 @@ class Logger {
   }
 }
 
-// 导出单例，使用默认配置
-export const logger = new Logger({
-  logDir: LOG_DIR,
-  maxFileSize: LOG_MAX_FILE_SIZE,
-  maxFiles: LOG_MAX_FILES,
-  minLevel: (LOG_LEVEL as LogLevel) ?? LogLevel.INFO,
-});
+/**
+ * Why this global module-level logger instance initialized twice in Next.js? 
+ * Even when running in production mode.
+ */
+// console.log('[TRACE] logger module initialization:', __filename, 'pid:', process.pid);
+// console.trace();
+
+// 使用 globalThis 确保 logger 不会被重复创建
+const globalForLogger = globalThis as typeof globalThis & { __logger?: Logger };
+if (!globalForLogger.__logger) {
+  globalForLogger.__logger = new Logger({
+    logDir: LOG_DIR,
+    maxFileSize: LOG_MAX_FILE_SIZE,
+    maxFiles: LOG_MAX_FILES,
+    minLevel: (LOG_LEVEL as LogLevel) ?? LogLevel.INFO,
+  });
+
+  console.log('Gloabl logger initialized');
+}
+export const logger = globalForLogger.__logger!;

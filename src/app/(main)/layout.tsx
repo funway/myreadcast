@@ -14,6 +14,7 @@ export default async function TestLayout({
 }>) {
   logger.debug('[TestLayout] SSR 渲染');
   
+  // return root layout template
   return (
     <>
       <NavBar />

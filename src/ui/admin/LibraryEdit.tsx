@@ -92,7 +92,7 @@ export default function LibraryEdit({ library, className, onSuccess, onCancel }:
           <div className="flex gap-4">
             {/* Icon 选择 */}
             <div className="form-control">
-              <label className="block text-sm font-medium text-base-content mb-2" htmlFor='icon'>
+              <label className="block text-sm font-medium text-base-content mb-2">
                 Icon
               </label>
               <input type="hidden" id="icon" name="icon" value={selectedIcon} />
@@ -124,16 +124,17 @@ export default function LibraryEdit({ library, className, onSuccess, onCancel }:
 
             {/* Library Name */}
             <div className="flex-1 form-control">
-                <label className="block text-sm font-medium text-base-content mb-2">
-                  Library Name
-                </label>
-                <input 
-                  type="text" 
-                  className="input input-bordered w-full bg-base-100" 
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Name your library"
-                />
+              <label className="block text-sm font-medium text-base-content mb-2">
+                Library Name
+              </label>
+              <input
+                name="libraryName"
+                type="text" 
+                className="input input-bordered w-full bg-base-100" 
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Name your library"
+              />
             </div>
           </div>
 

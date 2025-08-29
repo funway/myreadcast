@@ -113,7 +113,7 @@ export async function updateLibrary(id: string, data: UpdateLibrary): Promise<Li
   return await db.transaction(async (tx) => {
     // 更新主表
     if (data.name !== undefined || data.icon !== undefined) {
-      const updateData: any = {};
+      const updateData: UpdateLibrary = {};
       if (data.name !== undefined) updateData.name = data.name;
       if (data.icon !== undefined) updateData.icon = data.icon;
       

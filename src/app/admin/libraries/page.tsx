@@ -3,7 +3,7 @@ import LibrariesPanel from '@/ui/admin/LibrariesPanel';
 
 export default async function AdminLibrariesPage() {
   const libraries = await getLibrariesData();
-  console.log('[AdminLibrariesPage] get all libraries:', libraries);
+  console.log('[AdminLibrariesPage] get all libraries:', libraries.length);
   
   return (
     <LibrariesPanel initLibraries={ libraries } />

@@ -16,7 +16,7 @@ interface Props {
 }
 
 export default function LibrariesPanel({ initLibraries, className }: Props) { 
-  console.log('[LibrariesPanel] initLibraries:', initLibraries);
+  console.log('[LibrariesPanel] initLibraries:', initLibraries.length);
   
   const [libraries, setLibraries] = useState<LibraryWithScan[]>(
     initLibraries.map(lib => ({ ...lib, scanStatus: 'idle' as const }))
@@ -82,7 +82,10 @@ export default function LibrariesPanel({ initLibraries, className }: Props) {
     <div className={className}>
       {/* caption */}
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold text-primary">Libraries</h1>
+        <div className="flex gap-1 items-center">
+          <h1 className="text-3xl font-bold text-primary">Libraries</h1>
+          <div className="badge badge-sm badge-secondary">{ libraries.length }</div>
+        </div>
         <button 
           className="btn btn-primary"
           onClick={() => setIsModalOpen(true)}
@@ -102,12 +105,15 @@ export default function LibrariesPanel({ initLibraries, className }: Props) {
             {/* title */}
             <div>
               <h3 className="text-lg font-semibold">{library.name}</h3>
-              <p className="text-sm text-base-content/70">
+                <p className="text-sm text-base-content/70">
                 {library.folders?.length > 0 
-                  ? `${library.folders.length} 个文件夹` 
-                  : '暂无文件夹'
+                  ? `${library.folders.length} folders` 
+                  : 'No folders'
                 }
-              </p>
+                </p>
+                <p className="text-xs text-base-content/50">
+                Updated at: {library.updatedAt ? new Date(library.updatedAt).toLocaleString() : 'N/A'}
+                </p>
             </div>
             {/* actions */}
             <div className="flex items-center gap-2">

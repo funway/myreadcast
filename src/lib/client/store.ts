@@ -4,6 +4,7 @@
  */
 import { createStore } from 'zustand';
 import { SessionUser } from '@/lib/auth/types';
+import type { Library } from '@/lib/server/db/library';
 
 /**
  * 客户端共享状态的类型 (包括 状态值的类型 以及 状态修改函数的类型)
@@ -14,12 +15,16 @@ import { SessionUser } from '@/lib/auth/types';
 export type ClientStates = { 
   sessionUser: SessionUser | null;
   count: number; 
+  libraries: Library[];
 }
 
 type ClientStatesActions = {
   setSessionUser: (user: SessionUser | null) => void;
+  
   setCount: (newCount: number) => void;
   increaseCount: () => void;
+
+  setLibraries: (libs: Library[]) => void;
 }
 
 export type ClientStatesStore = ClientStates & ClientStatesActions;
@@ -27,6 +32,7 @@ export type ClientStatesStore = ClientStates & ClientStatesActions;
 // 默认值
 const defaultInitState: ClientStates = {
   sessionUser: null,
+  libraries: [],
   count: 99,
 }
 
@@ -46,10 +52,15 @@ export const createClientStatesStore = (
       
       setCount: (newCount) => set({ count: newCount }),
       
-      increaseCount: () => { 
+      increaseCount: () => {
         console.log('<increaseCount> ClientStates.count +1');
         set((state) => ({ count: state.count + 1 }));
       },
-    }
+
+      setLibraries: (libs) => {
+        console.log('<setLibraries> 设置 libraries:', libs.length);
+        set({ libraries: libs });
+      },
+    };
   })
 }

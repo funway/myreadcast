@@ -1,12 +1,13 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import { cookies } from 'next/headers';
-import { ACCESS_TOKEN_COOKIE, THEME_COOKIE } from "@/lib/shared/constants";
+import { THEME_COOKIE } from "@/lib/shared/constants";
 import { ThemeProvider } from "@/ui/contexts/ThemeContext";
-import { getUserFromJWT } from "@/lib/auth/common";
 import { logger } from "@/lib/server/logger";
 import DevButton from "@/ui/test/DevBtn";
 import { StatesStoreProvider } from "@/ui/contexts/StoreContext";
+import { getLibrariesData } from "@/lib/server/actions/library";
+import { auth } from "@/lib/auth/server-auth";
 
 export const metadata: Metadata = {
   title: "My Readcast",
@@ -22,9 +23,15 @@ export default async function RootLayout({
   
   const cookieStore = await cookies();
   const theme = cookieStore.get(THEME_COOKIE)?.value || 'light';
-  const sessionUser = getUserFromJWT(cookieStore.get(ACCESS_TOKEN_COOKIE)?.value || '');
+  const sessionUser = await auth();
   logger.debug('[RootLayout] 获取当前用户', { sessionUser });
-  const initStates = { sessionUser: sessionUser, count: sessionUser ? 1 : 0 };
+  const libraries = sessionUser ? await getLibrariesData() : [];
+  
+  const initStates = {
+    sessionUser: sessionUser,
+    libraries: libraries,
+    count: sessionUser ? 1 : 0
+  };
 
   return (
     <html lang="en" data-theme={theme}>

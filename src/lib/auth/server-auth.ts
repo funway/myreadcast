@@ -1,11 +1,9 @@
 import bcrypt from 'bcrypt';
 import { cookies } from 'next/headers';
-import { eq } from 'drizzle-orm';
 
 import { logger } from '@/lib/server/logger';
-import { UserTable } from "@/lib/server/db/schema";
 import {
-  AUTH_SECRET, PASSWORD_BCRYPT_SALT_ROUNDS,
+  AUTH_SECRET,
   ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE,
   ACCESS_TOKEN_EXPIRES_IN, REFRESH_TOKEN_EXPIRES_IN
 } from '@/lib/server/constants';
@@ -45,7 +43,10 @@ export async function signIn(username: string, password: string, cookieStore: Wr
 /**
  * 获取当前认证用户
  * 
- * `auth` is not Edge safe. 
+ * 如果 Access Token 无效，会自动校验 Refresh Token.  
+ * 只负责返回用户，不负责写 Session Cookie
+ * 
+ * `auth` is not Edge safe.  
  * Use `edgeAuth` if u need to run in Edge runtime.
  * @returns SessionUser 或 null
  */
