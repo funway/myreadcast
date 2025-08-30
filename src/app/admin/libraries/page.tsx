@@ -6,6 +6,6 @@ export default async function AdminLibrariesPage() {
   console.log('[AdminLibrariesPage] get all libraries:', libraries.length);
   
   return (
-    <LibrariesPanel initLibraries={ libraries } />
+    <LibrariesPanel initLibraries={libraries} />
   );
 }

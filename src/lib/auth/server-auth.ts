@@ -54,35 +54,39 @@ export async function auth(): Promise<SessionUser | null> {
   try {
     const cookieStore = await cookies();
     const accessToken = cookieStore.get(ACCESS_TOKEN_COOKIE)?.value;
-
-    // 1. 无 Access Token, 直接返回 null
-    if (!accessToken) {
-      return null;
-    }
-
-    // 2. 验证 Access Token
-    const payload = await verifyJWT<AccessTokenPayload>(accessToken, AUTH_SECRET);
+    const refreshToken = cookieStore.get(REFRESH_TOKEN_COOKIE)?.value;
     
-    // 3. Access Token 有效则返回用户信息
-    if (payload) {
-      return {
-        id: payload.id,
-        username: payload.username,
-        role: payload.role,
-        image: payload.image,
-      } as SessionUser;
-    }
-
-    // 4. Access Token 无效, 尝试使用 Refresh Token 获取新的 Access Token
-    const sessionUser = authToken();
-    if (!sessionUser) {
-      return null;
+    if (accessToken) { 
+      // 1. 验证 Access Token
+      const payload = await verifyJWT<AccessTokenPayload>(accessToken, AUTH_SECRET);
+      // 2. Access Token 有效则返回用户信息
+      if (payload) {
+        const user = {
+          id: payload.id,
+          username: payload.username,
+          role: payload.role,
+          image: payload.image,
+        } as SessionUser;
+        
+        logger.debug('Access Token authed:', user);
+        return user;
+      }
     }
     
-    return sessionUser;
+    logger.debug('Access Token auth failed')
+
+    // 3. Access Token 无效, 尝试从 Refresh Token 验证用户
+    const user = await authToken();
+    if (!user) {
+      logger.debug('Refresh Token auth failed')
+      return null;
+    }
+    
+    logger.debug('Refresh Token authed:', user);
+    return user;
   }
   catch (error) {
-    console.error('Auth error:', error);
+    logger.error('Auth error:', error);
     return null;
   }
 }
@@ -109,15 +113,12 @@ export async function authToken(): Promise<SessionUser | null> {
 
     // 2. 验证 Refresh Token 中的 token 与数据库是否一致
     const existingUser = await getUserById(refreshPayload.id);
-      // db.select().from(UserTable)
-      // .where(eq(UserTable.id, refreshPayload.id))
-      // .get();
     if (!existingUser || existingUser.token !== refreshPayload.token) { 
       logger.info('用户 refresh_token 不匹配', existingUser);
       throw new AuthError('Refresh Token does not match stored token');
     }
 
-    // 5. Refresh Token 验证通过，返回 SessionUser 实例
+    // 3. Refresh Token 验证通过，返回 SessionUser 实例
     const sessionUser: SessionUser = {
       id: existingUser.id,
       username: existingUser.username,

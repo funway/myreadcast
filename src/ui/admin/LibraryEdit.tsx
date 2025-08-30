@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState } from 'react';
 import type { Library } from '@/lib/server/db/library';
 import { createLibraryAction, updateLibraryAction } from '@/lib/server/actions/library';
 import MyIcon, { IconName } from '@/ui/MyIcon';
@@ -85,7 +85,8 @@ export default function LibraryEdit({ library, className, onSuccess, onCancel }:
       </label>
 
       {/* 选项卡内容 */}
-      { tab1Content === "details" ? (
+      {tab1Content === "details" ? (
+        // 编辑界面
         <div className="tab-content bg-base-100 border-base-300 p-6 space-y-6">
 
           {/* 第一行 */}
@@ -175,7 +176,16 @@ export default function LibraryEdit({ library, className, onSuccess, onCancel }:
 
           {/* 第三行 Save Button - 右下角 */}
           <div className="divider" />
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-3">
+            {onCancel && (
+              <button 
+                className="btn"
+                onClick={onCancel}
+                disabled={isPending}
+              >
+                Cancel
+              </button>
+            )}
             <button 
               className="btn btn-primary"
               onClick={handleSave}
@@ -186,23 +196,24 @@ export default function LibraryEdit({ library, className, onSuccess, onCancel }:
           </div>
 
         </div>
-        ) : (
-        <div className="tab-content bg-base-100 border-base-300 p-6">
-          {/* 标题栏 */}
-          <div className="flex items-center mb-4">
-            <button className="btn btn-ghost btn-square" onClick={handleBackToDetails}>
-              <MyIcon iconName="arrowLeft"/>
-            </button>
-            <h4 className="font-semibold">Choose a Folder</h4>
-          </div>
+      ) : (
+          // 文件夹选择界面
+          <div className="tab-content bg-base-100 border-base-300 p-6">
+            {/* 标题栏 */}
+            <div className="flex items-center mb-4">
+              <button className="btn btn-ghost btn-square" onClick={handleBackToDetails}>
+                <MyIcon iconName="arrowLeft"/>
+              </button>
+              <h4 className="font-semibold">Choose a Folder</h4>
+            </div>
 
-          {/* ServerFolderSelector 组件 */}
-          <ServerFolderSelector
-            onFolderSelect={handleAddFolder}
-            initialPath="/"
-            className="w-full"
-          />
-        </div>
+            {/* ServerFolderSelector 组件 */}
+            <ServerFolderSelector
+              onFolderSelect={handleAddFolder}
+              initialPath="/"
+              className="w-full"
+            />
+          </div>
         )
       }
 

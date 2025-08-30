@@ -25,6 +25,7 @@ export default function LibrariesPanel({ initLibraries, className }: Props) {
     console.log('[LibrariesPanel] calss useEffect: initLibraries changed.', initLibraries);
     setLibraries(initLibraries.map(lib => ({ ...lib, scanStatus: 'idle' as const })));
   }, [initLibraries]);
+  
   const [isPending, startTransition] = useTransition();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingLibrary, setEditingLibrary] = useState<LibraryWithScan | null>(null);
@@ -186,12 +187,12 @@ export default function LibrariesPanel({ initLibraries, className }: Props) {
         <dialog className="modal modal-open">
           <div className="modal-box">
             <h3 className="font-bold text-lg">Confirm Delete</h3>
-            <div className="flex items-center gap-2 py-4">
+            <div className="flex flex-col gap-2 py-4">
               <p className="">
                 Are you sure you want to delete this library?
               </p>
-              <span className="badge badge-soft badge-primary">
-                [{libraries.find(lib => lib.id === deleteConfirmId)?.name}]
+              <span className="badge badge-soft badge-secondary">
+                {libraries.find(lib => lib.id === deleteConfirmId)?.name}
               </span>
             </div>
             <div className="modal-action">

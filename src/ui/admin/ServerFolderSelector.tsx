@@ -42,7 +42,8 @@ export default function ServerFolderSelector({
       
       if (data.success) {
         // 只显示文件夹
-        const directories = data.items.filter((item: FolderItem) => item.isDirectory);
+        // const directories = data.items.filter((item: FolderItem) => item.isDirectory);
+        const directories = data.items;
         setFolders(directories);
       } else {
         throw new Error(data.error || '获取文件夹失败');
@@ -165,12 +166,18 @@ export default function ServerFolderSelector({
                     <button
                       className="justify-between text-sm"
                       onClick={() => navigateToFolder(folder.path)}
+                      disabled={!folder.isDirectory}
                     >
                       <div className="flex items-center gap-2">
-                        <MyIcon iconName="folder" className="w-4 h-4 text-warning" />
+                        <MyIcon
+                          iconName={folder.isDirectory ? "folder" : "file"}
+                          className={`w-4 h-4 ${folder.isDirectory ? "text-warning" : "text-base-content/70"}`}
+                        />
                         <span className="font-mono">{folder.name}</span>
                       </div>
-                      <MyIcon iconName="chevronRight" className="w-4 h-4" />
+                      {folder.isDirectory && (
+                        <MyIcon iconName="chevronRight" className="w-4 h-4" />
+                      )}
                     </button>
                   </li>
                 ))}

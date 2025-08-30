@@ -1,8 +1,10 @@
 'use client';
 
-import React, { useActionState } from 'react';
+import React, { useActionState, useEffect } from 'react';
 import { signInAction } from '@/lib/server/actions/user';
 import MyIcon from '@/ui/MyIcon';
+import { ActionResult } from '@/lib/shared/types';
+import { LOGIN_REDIRECT } from '@/lib/shared/constants';
 
 export default function LoginForm({ caption = "Login", className = "space-y-6" }) {
   console.log('[LoginForm] Rendered');
@@ -14,10 +16,19 @@ export default function LoginForm({ caption = "Login", className = "space-y-6" }
   //  - state: 当前的状态值，这里是 errorMessage
   //  - dispatch: 传递给 <form> action 属性的函数, 我们命名为 formAction
   //  - isPending: 一个布尔值，表示表单是否正在提交
-  const [errorMessage, formAction, isPending] = useActionState(
-    signInAction,
+  const [actionResult, formAction, isPending] = useActionState(
+    async (_prevState: ActionResult | undefined, formData: FormData) => {
+          return await signInAction(formData, LOGIN_REDIRECT);
+        },
     undefined,
   );
+
+  useEffect(() => {
+    // 如果 action 成功，直接返回 redirect, 就不会进入这个钩子了
+    console.log('[LoginForm] Action Result:', actionResult);
+    if (actionResult?.success) {
+    }
+  }, [actionResult]);
 
   return (
     <form className={className} action={formAction}>
@@ -62,7 +73,7 @@ export default function LoginForm({ caption = "Login", className = "space-y-6" }
       </div>
 
       {/* Error Message */}
-      {errorMessage && (
+      {actionResult && (
         <div role="alert" className="alert alert-error w-full text-sm p-2">
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -77,7 +88,7 @@ export default function LoginForm({ caption = "Login", className = "space-y-6" }
               d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
             />
           </svg>
-          <span>{errorMessage}</span>
+          <span>{actionResult.message}</span>
         </div>
       )}
 

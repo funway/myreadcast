@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 
 const LogoutButton = () => { 
   const router = useRouter();
-
+  
   const handleLogout = async () => {
     try {
       await fetch('/api/auth/logout', {
@@ -29,12 +29,15 @@ const LogoutButton = () => {
   };
 
   return (
-    // <button className="w-full text-left" onClick={ handleLogout }>
-    //   Logout
-    // </button>
-    <button className="w-full text-left" onClick={() => signOutAction(LOGOUT_REDIRECT)}>
+    // 方式1, 请求 API
+    <button className="w-full text-left" onClick={ handleLogout }>
       Logout
     </button>
+    
+    // 方式2, 请求 Server Action
+    // <button className="w-full text-left" onClick={() => signOutAction(LOGOUT_REDIRECT)}>
+    //   Logout
+    // </button>
   );
 }
 

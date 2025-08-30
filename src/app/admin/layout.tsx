@@ -24,7 +24,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
         {/* 内容区域 */}
         <main className="flex-1 p-8 flex justify-center items-start">
-          <div className="bg-base-100 shadow-md rounded-lg p-6 min-w-2/3 min-h-2/3">
+          <div className="bg-base-100 shadow-md rounded-lg p-8 min-w-2/3 min-h-2/3">
             {children}
           </div>
         </main>

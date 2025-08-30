@@ -1,6 +1,3 @@
-// =============================================================================
-// library.ts - Library CRUD Functions (统一的 Library 模型)
-// =============================================================================
 import { eq, and, asc } from "drizzle-orm";
 import { db } from "@/lib/server/db";
 import { LibraryTable, LibraryFolderTable } from "./schema";
@@ -11,16 +8,14 @@ export type Library = typeof LibraryTable.$inferSelect & {
   folders: string[]; // 文件夹路径数组，可能为空数组
 };
 
-export type NewLibrary = Omit<typeof LibraryTable.$inferInsert, "id"> & {
-  id?: string;
-  folders?: string[];
-};
-
-export type UpdateLibrary = {
-  name?: string;
-  icon?: string;
-  folders?: string[];
-};
+export type LibraryNew = {
+  name: string,
+  icon: string,
+} & Partial<Omit<Library, "updatedAt" | "createdAt">>;
+  
+export type LibraryUpdate = {
+  id: string,
+} & Partial<Omit<Library, "updatedAt" | "createdAt">>;
 
 /**
  * 将数据库记录转换为业务层 Library 对象
@@ -39,7 +34,7 @@ async function buildLibraryWithFolders(libraryRecord: typeof LibraryTable.$infer
 /**
  * 创建新的图书馆
  */
-export async function createLibrary(data: NewLibrary): Promise<Library> {
+export async function createLibrary(data: LibraryNew): Promise<Library> {
   const libraryId = data.id ?? createId();
   
   // 事务：插入 library 和 folders
@@ -109,19 +104,17 @@ export async function getLibraryByName(name: string): Promise<Library | null> {
 /**
  * 更新图书馆信息
  */
-export async function updateLibrary(id: string, data: UpdateLibrary): Promise<Library | null> {
+export async function updateLibrary(data: LibraryUpdate): Promise<Library | null> {
   return await db.transaction(async (tx) => {
+    const { id, folders, ...rest } = data;
     // 更新主表
-    if (data.name !== undefined || data.icon !== undefined) {
-      const updateData: UpdateLibrary = {};
-      if (data.name !== undefined) updateData.name = data.name;
-      if (data.icon !== undefined) updateData.icon = data.icon;
-      
-      await tx
-        .update(LibraryTable)
-        .set(updateData)
-        .where(eq(LibraryTable.id, id));
-    }
+    await tx
+      .update(LibraryTable)
+      .set({
+        ...rest,
+        updatedAt: new Date(),
+      })
+      .where(eq(LibraryTable.id, id));
 
     // 更新文件夹
     if (data.folders !== undefined) {

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useActionState, useEffect, useState } from 'react';
-import { createAction } from '@/lib/server/actions/user';
+import { createUserAction, signInAction } from '@/lib/server/actions/user';
 import { useRouter } from "next/navigation";
 import MyIcon from '@/ui/MyIcon';
 import { ActionResult } from '@/lib/shared/types';
@@ -12,18 +12,24 @@ export function CreateRootForm({ caption = "Create Root User", className = "spac
   
   const [actionResult, formAction, isPending] = useActionState(
     async (_prevState: ActionResult | undefined, formData: FormData) => {
-      return await createAction(formData, LOGIN_REDIRECT);
+      console.log('[CreateRootForm] Create Root User');
+      
+      const createResult = await createUserAction(formData);
+      if (!createResult.success) { 
+        return createResult;
+      }
+
+      console.log('[CreateRootForm] Auto signin after user creation');
+      const signInResult = await signInAction(formData, LOGIN_REDIRECT);
+      return signInResult;
     },
     undefined,
   );
 
-  const router = useRouter();
-
   useEffect(() => {
     console.log('[CreateRootForm] Action Result:', actionResult);
     if (actionResult?.success) {
-      // router.push('/test');
-      // router.refresh();
+      // nothing, 成功的话 action 就返回 redirect 了，不会进入 useEffect
     }
   }, [actionResult]);
 

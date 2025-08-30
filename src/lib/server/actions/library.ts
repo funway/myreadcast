@@ -1,7 +1,6 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
 import { Library } from '@/lib/server/db/library';
 import { createLibrary, updateLibrary, deleteLibrary, getAllLibraries, addFolderToLibrary } from '@/lib/server/db/library';
 import { logger } from '@/lib/server/logger';
@@ -10,12 +9,21 @@ export async function createLibraryAction(formData: FormData) {
   try {
     const name = formData.get('name') as string;
     const icon = formData.get('icon') as string;
+    const folders = formData.get('folders') as string; // JSON 字符串
     
     if (!name?.trim()) {
       return { success: false, error: '媒体库名称不能为空' };
     }
     
-    const library = await createLibrary({ name: name.trim(), icon });
+    const newLib = {
+      name: name.trim(),
+      icon: icon,
+      folders: folders ? JSON.parse(folders) : [],
+    };
+    logger.debug('Create new library:', newLib);
+
+    const library = await createLibrary(newLib);
+    
     revalidatePath('/admin/libraries');
     
     return { success: true, data: library };
@@ -35,10 +43,11 @@ export async function updateLibraryAction(id: string, formData: FormData) {
       return { success: false, error: '媒体库名称不能为空' };
     }
     
-    const library = await updateLibrary(id, {
+    const library = await updateLibrary({
+      id: id,
       name: name.trim(),
       icon: icon,
-      folders: folders ? JSON.parse(folders) : []
+      folders: folders ? JSON.parse(folders) : [],
     });
     if (!library) {
       return { success: false, error: '媒体库不存在' };
@@ -75,7 +84,6 @@ export async function addFolderAction(libraryId: string, folderPath: string) {
     }
     
     revalidatePath('/admin/libraries');
-    revalidatePath(`/admin/libraries/${libraryId}`);
     return { success: true, data: library };
   } catch (error) {
     logger.error('Add folder error:', error);

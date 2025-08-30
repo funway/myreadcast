@@ -4,9 +4,9 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { signIn } from '@/lib/auth/server-auth';
 import { clearSessionCookies } from '@/lib/auth/common';
-import { LOGIN_REDIRECT, LOGOUT_REDIRECT } from '@/lib/server/constants';
+import { LOGOUT_REDIRECT } from '@/lib/server/constants';
 import { logger } from '@/lib/server/logger';
-import { createUser } from '@/lib/server/db/user';
+import { createUser, deleteUser, updateUser } from '@/lib/server/db/user';
 import { ActionResult } from '@/lib/shared/types';
 
 // 定义登录表单的数据结构和验证规则
@@ -16,9 +16,9 @@ const LoginFormSchema = z.object({
 });
 
 export async function signInAction(
-  _prevState: string | undefined,
   formData: FormData,
-) {
+  redirectTo?: string,
+): Promise<ActionResult> {
   const data = Object.fromEntries(formData.entries());
   logger.debug('用户登录验证', data);
 
@@ -26,7 +26,10 @@ export async function signInAction(
   // 验证用户输入
   if (!validationResult.success) {
     logger.debug(`验证失败: ${validationResult.error.message}`);
-    return z.prettifyError(validationResult.error);
+    return {
+      success: false,
+      message: z.prettifyError(validationResult.error),
+    };
   }
 
   // 尝试登录
@@ -35,14 +38,24 @@ export async function signInAction(
   try {
     const sessionUser = await signIn(username, password, cookieStore);
     if (!sessionUser) {
-      return 'Invalid username or password.';
+      return {
+        success: false,
+        message: 'Invalid username or password.',
+      };
     }
   } catch (error) {
     logger.error('Fail to signIn a user', error);
-    return String(error);
+    return {
+      success: false,
+      message: String(error),
+    };
   }
+  
   // Do not put `redirect()` function inside of a try/catch code
-  redirect(LOGIN_REDIRECT);
+  if (redirectTo) {
+    redirect(redirectTo);
+  }
+  return {success: true, message: 'User logined'}
 }
 
 /**
@@ -64,11 +77,12 @@ const CreateUserSchema = z.object({
   role: z.enum(['admin', 'user'], { message: 'Invalid role. Please select either admin or user.' }),
 });
 
-export async function createAction(
+export async function createUserAction(
   formData: FormData,
   redirectTo?: string,
 ): Promise<ActionResult> {
   const data = Object.fromEntries(formData.entries());
+  logger.debug('Create a new user', data);
   const validationResult = CreateUserSchema.safeParse(data);
   if (!validationResult.success) { 
     return {
@@ -80,17 +94,11 @@ export async function createAction(
   const { username, password, role } = validationResult.data;
   try {
     // 创建新用户
-    await createUser({
+    const user = await createUser({
       username: username,
       plainPassword: password,
       role: role,
     });
-
-    // 登录新用户
-    const cookieStore = await cookies();
-    const sessionUser = await signIn(username, password, cookieStore);
-    
-    logger.debug('Create a new user and sign in', sessionUser);
   } catch (error) {
     logger.error('Fail to create user', error)
     return {
@@ -103,4 +111,76 @@ export async function createAction(
   }
 
   return { success: true, message: 'User created' };
-;}
+}
+
+const UpdateUserSchema = z.object({
+  id: z.string().min(1, { message: 'User ID is required.' }),
+  username: z.string().min(1, { message: 'Username is required.' }).optional(),
+  password: z.string().min(4, { message: 'Password must be at least 4 characters.' }).optional(),
+  role: z.enum(['admin', 'user'], { message: 'Invalid role.' }).optional(),
+});
+
+export async function updateUserAction(
+  formData: FormData,
+  redirectTo?: string,
+): Promise<ActionResult> {
+  const data = Object.fromEntries(formData.entries());
+  logger.debug('Update user', data);
+  const validationResult = UpdateUserSchema.safeParse(data);
+  if (!validationResult.success) {
+    const msg = z.prettifyError(validationResult.error);
+    logger.debug('Input validation failed', { msg });
+    return {
+      success: false,
+      message: msg,
+    };
+  }
+
+  const { id, username, password, role } = validationResult.data;
+  try {
+    await updateUser({
+      id: id,
+      username: username,
+      password: password,
+      role: role,
+    });
+  } catch (error) {
+    logger.error('Fail to update user', error);
+    return {
+      success: false,
+      message: String(error),
+    };
+  }
+  if (redirectTo) {
+    redirect(redirectTo);
+  }
+  return { success: true, message: 'User updated' };
+}
+
+export async function deleteUserAction(
+  formData: FormData,
+  redirectTo?: string,
+): Promise<ActionResult> {
+  const id = formData.get('id');
+  if (!id || typeof id !== 'string') {
+    return {
+      success: false,
+      message: 'User ID is required.',
+    };
+  }
+
+  try {
+    await deleteUser(id);
+    logger.debug('Delete user', { id });
+  } catch (error) {
+    logger.error('Fail to delete user', error);
+    return {
+      success: false,
+      message: String(error),
+    };
+  }
+  if (redirectTo) {
+    redirect(redirectTo);
+  }
+  return { success: true, message: 'User deleted' };
+}

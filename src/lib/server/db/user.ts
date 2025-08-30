@@ -5,15 +5,19 @@ import { UserTable } from "./schema";
 import { createId } from '@paralleldrive/cuid2';
 import { generateRandomToken } from "../helpers";
 import { PASSWORD_BCRYPT_SALT_ROUNDS } from "../constants";
+import { logger } from "../logger";
 
 // --- 类型定义 (利用 Drizzle 的类型推断) ---
 export type User = typeof UserTable.$inferSelect;
 
-type UserInsert = typeof UserTable.$inferInsert;
-export type NewUser = {
+export type UserNew = {
   username: string;
   plainPassword: string;
-} & Partial<Omit<UserInsert, "username" | "password">>;
+} & Partial<Omit<User, "password" | "updatedAt" | "createdAt">>;
+
+export type UserUpdate = {
+  id: string;
+} & Partial<Omit<User, "updatedAt" | "createdAt">>;
 
 /**
  * Creates a new user.
@@ -25,17 +29,19 @@ export type NewUser = {
  *
  * @returns The newly inserted user record.
  */
-export async function createUser(data: NewUser) {
+export async function createUser(data: UserNew) {
+  const { plainPassword, ...rest } = data;
   const hashPassword = await bcrypt.hash(
-    data.plainPassword,
+    plainPassword,
     PASSWORD_BCRYPT_SALT_ROUNDS);
   
   const userData = {
-    ...data,
+    ...rest,
     id: data.id ?? createId(),
     token: data.token ?? generateRandomToken(),
     password: hashPassword,
   }
+  logger.debug('Create user with data:', userData);
   const [user] = await db.insert(UserTable).values(userData).returning();
   return user;
 }
@@ -54,19 +60,43 @@ export async function getUserByUsername(username: string) {
   return user;
 }
 
-export async function updateUserToken(id: string, token: string) {
-  const [user] = await db
-    .update(UserTable)
-    .set({ token })
-    .where(eq(UserTable.id, id))
-    .returning();
-  return user;
-}
-
 export async function getAdmins() {
   return await db.query.UserTable.findMany(
     {
       where: eq(UserTable.role, 'admin'),
     }
   );
+}
+
+export async function getUsers() {
+  return await db.query.UserTable.findMany();
+}
+
+export async function updateUser(userUpdates: UserUpdate) {
+  const { id, ...rest } = userUpdates;
+  if (rest.password) {
+    rest.password = await bcrypt.hash(rest.password, PASSWORD_BCRYPT_SALT_ROUNDS);
+  }
+  
+  const [user] = await db
+    .update(UserTable)
+    .set({
+      ...rest,
+      updatedAt: new Date(),
+    })
+    .where(eq(UserTable.id, id))
+    .returning();
+  return user;
+}
+
+export async function updateUserToken(id: string, token: string) {
+  return await updateUser({ id, token });
+}
+
+export async function deleteUser(id: string) {
+  const [user] = await db
+    .delete(UserTable)
+    .where(eq(UserTable.id, id))
+    .returning();
+  return user;
 }

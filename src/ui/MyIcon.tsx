@@ -34,7 +34,10 @@ import {
 	LuBookOpen,
 	LuChevronRight,
 	LuArrowLeft,
-	LuX
+	LuX,
+	LuFile,
+	LuUserCog,
+	LuChevronDown
 } from "react-icons/lu";
 
 // 图标映射
@@ -69,15 +72,18 @@ const iconMap = {
 	user: LuUser,
 	users: LuUsers,
 	userPlus: LuUserPlus,
+	admin: LuUserCog,
 	key: LuKeyRound,
 	
 	folder:	LuFolder,
 	folderPlus: LuFolderPlus,
+	file: LuFile,
 
 	plus: LuPlus,
 	arrowRight: LuArrowRight,
 	arrowLeft: LuArrowLeft,
 	chevronRight: LuChevronRight,
+	chevronDown: LuChevronDown,
 	x: LuX,
 };
 
