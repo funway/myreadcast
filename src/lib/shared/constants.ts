@@ -23,3 +23,5 @@ export const DAISY_THEMES = [
 
 export const LOGIN_REDIRECT = '/test';
 export const LOGOUT_REDIRECT = '/user/login';
+
+export const AUDIO_EXTENSIONS = new Set(['.mp3', '.m4a', '.wav']); 

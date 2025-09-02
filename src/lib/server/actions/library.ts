@@ -4,15 +4,16 @@ import { revalidatePath } from 'next/cache';
 import { Library } from '@/lib/server/db/library';
 import { createLibrary, updateLibrary, deleteLibrary, getAllLibraries, addFolderToLibrary } from '@/lib/server/db/library';
 import { logger } from '@/lib/server/logger';
+import { ActionResult } from '@/lib/shared/types';
 
-export async function createLibraryAction(formData: FormData) {
+export async function createLibraryAction(formData: FormData): Promise<ActionResult<Library>> {
   try {
     const name = formData.get('name') as string;
     const icon = formData.get('icon') as string;
     const folders = formData.get('folders') as string; // JSON 字符串
     
     if (!name?.trim()) {
-      return { success: false, error: '媒体库名称不能为空' };
+      return { success: false, message: '媒体库名称不能为空' };
     }
     
     const newLib = {
@@ -29,7 +30,7 @@ export async function createLibraryAction(formData: FormData) {
     return { success: true, data: library };
   } catch (error) {
     logger.error('Create library error:', error);
-    return { success: false, error: '创建媒体库失败' };
+    return { success: false, message: '创建媒体库失败' };
   }
 }
 
@@ -40,7 +41,7 @@ export async function updateLibraryAction(id: string, formData: FormData) {
     const folders = formData.get('folders') as string; // JSON 字符串
     
     if (!name?.trim()) {
-      return { success: false, error: '媒体库名称不能为空' };
+      return { success: false, message: '媒体库名称不能为空' };
     }
     
     const library = await updateLibrary({
@@ -50,14 +51,14 @@ export async function updateLibraryAction(id: string, formData: FormData) {
       folders: folders ? JSON.parse(folders) : [],
     });
     if (!library) {
-      return { success: false, error: '媒体库不存在' };
+      return { success: false, message: '媒体库不存在' };
     }
     
     revalidatePath('/admin/libraries');
     return { success: true, data: library };
   } catch (error) {
     logger.error('Update library error:', error);
-    return { success: false, error: '更新媒体库失败' };
+    return { success: false, message: '更新媒体库失败' };
   }
 }
 
@@ -65,14 +66,14 @@ export async function deleteLibraryAction(id: string) {
   try {
     const library = await deleteLibrary(id);
     if (!library) {
-      return { success: false, error: '媒体库不存在' };
+      return { success: false, message: '媒体库不存在' };
     }
     
     revalidatePath('/admin/libraries');
     return { success: true, data: library };
   } catch (error) {
     logger.error('Delete library error:', error);
-    return { success: false, error: '删除媒体库失败' };
+    return { success: false, message: '删除媒体库失败' };
   }
 }
 
@@ -80,14 +81,14 @@ export async function addFolderAction(libraryId: string, folderPath: string) {
   try {
     const library = await addFolderToLibrary(libraryId, folderPath);
     if (!library) {
-      return { success: false, error: '媒体库不存在' };
+      return { success: false, message: '媒体库不存在' };
     }
     
     revalidatePath('/admin/libraries');
     return { success: true, data: library };
   } catch (error) {
     logger.error('Add folder error:', error);
-    return { success: false, error: '添加文件夹失败' };
+    return { success: false, message: '添加文件夹失败' };
   }
 }
 

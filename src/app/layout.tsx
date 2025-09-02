@@ -8,6 +8,7 @@ import DevButton from "@/ui/test/DevBtn";
 import { StatesStoreProvider } from "@/ui/contexts/StoreContext";
 import { getLibrariesData } from "@/lib/server/actions/library";
 import { auth } from "@/lib/auth/server-auth";
+import { ToastContainer } from 'react-toastify';
 
 export const metadata: Metadata = {
   title: "My Readcast",
@@ -41,6 +42,8 @@ export default async function RootLayout({
             
             {children}
 
+            <ToastContainer position="bottom-right" />
+            
             <DevButton />
 
           </ThemeProvider>

@@ -5,7 +5,7 @@
 import { eq, and } from "drizzle-orm";
 import { db } from "@/lib/server/db";
 import { MediaProgressTable } from "./schema";
-import { createId } from '@paralleldrive/cuid2';
+import { generateId } from "@/lib/server/helpers";
 
 // Position 类型定义
 export type EpubPosition = {
@@ -67,7 +67,7 @@ export async function upsertMediaProgress(data: NewMediaProgress): Promise<Media
     const [created] = await db
       .insert(MediaProgressTable)
       .values({
-        id: createId(),
+        id: generateId(),
         userId: data.userId,
         bookId: data.bookId,
         progress: data.progress ?? 0,

@@ -67,8 +67,8 @@ class Logger {
     
     this.ensureLogDirectory();
     
-    console.log(`pid:${process.pid}`,
-      'Logger initialized with config:',
+    console.log(`[pid:${process.pid}]`,
+      '📝 Logger initialized with config:',
       {
         logDir: this.logDir,
         maxFileSize: this.maxFileSize,
@@ -345,6 +345,6 @@ if (!globalForLogger.__logger) {
     minLevel: (LOG_LEVEL as LogLevel) ?? LogLevel.INFO,
   });
 
-  console.log('Gloabl logger initialized');
+  console.log(`[pid:${process.pid}] 📝 Global logger initialized`);
 }
 export const logger = globalForLogger.__logger!;

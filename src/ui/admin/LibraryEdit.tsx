@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { toast } from 'react-toastify';
 import type { Library } from '@/lib/server/db/library';
 import { createLibraryAction, updateLibraryAction } from '@/lib/server/actions/library';
 import MyIcon, { IconName } from '@/ui/MyIcon';
@@ -49,21 +50,33 @@ export default function LibraryEdit({ library, className, onSuccess, onCancel }:
       if (result.success) {
         onSuccess?.();
       } else {
-        console.error(result.error);
         // 这里可以添加错误提示逻辑
+        toast.error(result.message);
       }
     } catch (error) {
-      console.error('保存失败:', error);
+      toast.error(`Error: ${error}`);
     } finally {
       setIsPending(false);
     }
   };
 
   const handleAddFolder = (folderPath: string) => {
-    // 使用 Set 来保证不重复添加
-    const folderSet = new Set(folders);
-    folderSet.add(folderPath);
-    setFolders(Array.from(folderSet));
+    // 判断是否和已有路径重叠
+    const hasConflict = folders.some(existing => {
+      return (
+        folderPath === existing || // 完全相同
+        folderPath.startsWith(existing + '/') || // 新目录是已有目录的子目录
+        existing.startsWith(folderPath + '/')    // 已有目录是新目录的子目录
+      );
+    });
+
+    if (hasConflict) {
+      toast.error(`Path conflict: ${folderPath} overlaps with an existing path`);
+      return;
+    }
+
+    // 直接添加
+    setFolders([...folders, folderPath]);
     setTab1Content('details');
   };
 

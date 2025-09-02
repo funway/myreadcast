@@ -1,4 +1,14 @@
+import { createId } from '@paralleldrive/cuid2';
 import { randomBytes } from 'crypto';
+
+/**
+ * 生成数据的唯一 ID  
+ * 我们使用 CUID
+ * @returns 
+ */
+export function generateId(): string { 
+  return createId();
+}
 
 /**
  * 生成随机 token，用于 Refresh Token 或 API Key

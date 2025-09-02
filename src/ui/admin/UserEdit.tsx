@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import type { User } from '@/lib/server/db/user'; 
 import { createUserAction, updateUserAction } from '@/lib/server/actions/user'; 
-import MyIcon from '@/ui/MyIcon';
+import MyIcon, { IconName } from '@/ui/MyIcon';
+import { toast } from 'react-toastify';
 
 type UserRole = 'user' | 'admin';
 
@@ -21,6 +22,11 @@ export default function UserEdit({ user, className, onSuccess, onCancel }: UserE
   const [password, setPassword] = useState('');
   const [showPasswordField, setShowPasswordField] = useState(!user); // 新建用户时默认显示，编辑用户时默认隐藏
   const [isPending, setIsPending] = useState(false);
+
+  const roleOptions = [
+    { value: 'user', label: 'User', icon: 'user' },
+    { value: 'admin', label: 'Admin', icon: 'admin' },
+  ];
 
   const handleSave = async () => {
     setIsPending(true);
@@ -47,11 +53,11 @@ export default function UserEdit({ user, className, onSuccess, onCancel }: UserE
         console.log("[UserEdit] 创建/更新 用户成功");
         onSuccess?.();
       } else {
-        console.error(result.message);
+        toast.error(result.message);
         // 这里可以添加错误提示逻辑
       }
     } catch (error) {
-      console.error('保存失败:', error);
+      toast.error(`Error: ${error}`);
     } finally {
       setIsPending(false);
     }
@@ -70,7 +76,7 @@ export default function UserEdit({ user, className, onSuccess, onCancel }: UserE
             <div 
               tabIndex={0} 
               role="button" 
-              className="btn w-full justify-between bg-base-100 min-w-[120px]"
+              className="btn w-full justify-between bg-base-100 min-w-32"
             >
               <span className="flex items-center gap-2">
                 <MyIcon iconName={role === 'admin' ? 'admin' : 'user'} />
@@ -78,26 +84,22 @@ export default function UserEdit({ user, className, onSuccess, onCancel }: UserE
               </span>
               <MyIcon iconName="chevronDown" className="w-4 h-4" />
             </div>
-            <div tabIndex={0} className="dropdown-content z-[1] mt-1 w-full">
-              <div className="card-body p-2 bg-base-100 shadow-lg rounded">
-                <button
-                  type="button"
-                  className={`btn btn-ghost justify-start ${role === 'user' ? 'btn-active' : ''}`}
-                  onClick={() => setRole('user')}
-                >
-                  <MyIcon iconName="user" />
-                  User
-                </button>
-                <button
-                  type="button"
-                  className={`btn btn-ghost justify-start ${role === 'admin' ? 'btn-active' : ''}`}
-                  onClick={() => setRole('admin')}
-                >
-                  <MyIcon iconName="admin" />
-                  Admin
-                </button>
-              </div>
-            </div>
+            <ul 
+              tabIndex={0} 
+              className="dropdown-content menu bg-base-100 z-[1] w-full p-2 shadow-lg"
+            >
+              {roleOptions.map((option) => (
+                <li key={option.value}>
+                  <a
+                    className={`flex items-center gap-2 ${role === option.value ? 'active' : ''}`}
+                    onClick={() => setRole(option.value as UserRole)}
+                  >
+                    <MyIcon iconName={option.icon as IconName} />
+                    {option.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
 

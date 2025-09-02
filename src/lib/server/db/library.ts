@@ -1,7 +1,7 @@
 import { eq, and, asc } from "drizzle-orm";
 import { db } from "@/lib/server/db";
 import { LibraryTable, LibraryFolderTable } from "./schema";
-import { createId } from '@paralleldrive/cuid2';
+import { generateId } from "@/lib/server/helpers";
 
 // 业务层的统一 Library 类型定义
 export type Library = typeof LibraryTable.$inferSelect & {
@@ -35,7 +35,7 @@ async function buildLibraryWithFolders(libraryRecord: typeof LibraryTable.$infer
  * 创建新的图书馆
  */
 export async function createLibrary(data: LibraryNew): Promise<Library> {
-  const libraryId = data.id ?? createId();
+  const libraryId = data.id ?? generateId();
   
   // 事务：插入 library 和 folders
   return await db.transaction(async (tx) => {
@@ -52,7 +52,7 @@ export async function createLibrary(data: LibraryNew): Promise<Library> {
     // 插入文件夹
     if (data.folders && data.folders.length > 0) {
       const folderValues = data.folders.map(path => ({
-        id: createId(),
+        id: generateId(),
         path,
         libraryId,
       }));
@@ -126,7 +126,7 @@ export async function updateLibrary(data: LibraryUpdate): Promise<Library | null
       // 插入新文件夹
       if (data.folders.length > 0) {
         const folderValues = data.folders.map(path => ({
-          id: createId(),
+          id: generateId(),
           path,
           libraryId: id,
         }));
@@ -164,7 +164,7 @@ export async function addFolderToLibrary(id: string, folderPath: string): Promis
 
   // 添加新文件夹
   await db.insert(LibraryFolderTable).values({
-    id: createId(),
+    id: generateId(),
     path: folderPath,
     libraryId: id,
   });

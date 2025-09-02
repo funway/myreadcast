@@ -114,7 +114,7 @@ export async function authToken(): Promise<SessionUser | null> {
     // 2. 验证 Refresh Token 中的 token 与数据库是否一致
     const existingUser = await getUserById(refreshPayload.id);
     if (!existingUser || existingUser.token !== refreshPayload.token) { 
-      logger.info('用户 refresh_token 不匹配', existingUser);
+      logger.debug('用户 refresh_token 不匹配', existingUser);
       throw new AuthError('Refresh Token does not match stored token');
     }
 

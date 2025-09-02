@@ -62,6 +62,7 @@ if (!globalForDb.__db) {
   const db = drizzle(sqlite, { schema });
   initializeDatabase(db);
   globalForDb.__db = db;
+  console.log(`[pid:${process.pid}] 📚 Global db initialized`);
 }
 
 export const db = globalForDb.__db!;

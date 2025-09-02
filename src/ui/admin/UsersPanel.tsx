@@ -93,7 +93,7 @@ export default function UsersPanel({ initUsers, className }: UsersPanelProps) {
                     {user.role}
                   </span>
                 </td>
-                <td>{user.createdAt.toLocaleString()}</td>
+                <td className='font-mono'>{user.createdAt.toLocaleString()}</td>
                 <td className="flex gap-2">
                   <button
                     className="btn btn-ghost btn-square btn-sm"

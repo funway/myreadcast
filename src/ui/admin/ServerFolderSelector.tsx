@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import MyIcon from '../MyIcon';
 
-interface FolderItem {
+interface FSItem {
   name: string;
   path: string;
   isDirectory: boolean;
@@ -21,7 +21,7 @@ export default function ServerFolderSelector({
   className = ''
 }: ServerFolderSelectorProps) {
   const [currentPath, setCurrentPath] = useState(initialPath);
-  const [folders, setFolders] = useState<FolderItem[]>([]);
+  const [items, setItems] = useState<FSItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set([initialPath]));
@@ -42,15 +42,16 @@ export default function ServerFolderSelector({
       
       if (data.success) {
         // 只显示文件夹
-        // const directories = data.items.filter((item: FolderItem) => item.isDirectory);
-        const directories = data.items;
-        setFolders(directories);
+        // const items = data.items.filter((item: FolderItem) => item.isDirectory);
+        // 显示全部 (文件夹 + 文件)
+        const items = data.items;
+        setItems(items);
       } else {
         throw new Error(data.error || '获取文件夹失败');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : '获取文件夹失败');
-      setFolders([]);
+      setItems([]);
     } finally {
       setLoading(false);
     }
@@ -155,27 +156,27 @@ export default function ServerFolderSelector({
         {/* 文件夹列表 */}
         {!loading && !error && (
           <>
-            {folders.length === 0 ? (
+            {items.length === 0 ? (
               <div className="flex h-full justify-center items-center text-base-content/70">
                 <span>Empty Folder</span>
               </div>
             ) : (
               <ul className="menu w-full">
-                {folders.map((folder) => (
-                  <li key={folder.path}>
+                {items.map((item) => (
+                  <li key={item.path}>
                     <button
                       className="justify-between text-sm"
-                      onClick={() => navigateToFolder(folder.path)}
-                      disabled={!folder.isDirectory}
+                      onClick={() => navigateToFolder(item.path)}
+                      disabled={!item.isDirectory}
                     >
                       <div className="flex items-center gap-2">
                         <MyIcon
-                          iconName={folder.isDirectory ? "folder" : "file"}
-                          className={`w-4 h-4 ${folder.isDirectory ? "text-warning" : "text-base-content/70"}`}
+                          iconName={item.isDirectory ? "folder" : "file"}
+                          className={`w-4 h-4 ${item.isDirectory ? "text-warning" : "text-base-content/70"}`}
                         />
-                        <span className="font-mono">{folder.name}</span>
+                        <span className="font-mono">{item.name}</span>
                       </div>
-                      {folder.isDirectory && (
+                      {item.isDirectory && (
                         <MyIcon iconName="chevronRight" className="w-4 h-4" />
                       )}
                     </button>

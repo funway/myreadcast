@@ -2,8 +2,7 @@ import { eq } from "drizzle-orm";
 import bcrypt from 'bcrypt';
 import { db } from "@/lib/server/db";
 import { UserTable } from "./schema";
-import { createId } from '@paralleldrive/cuid2';
-import { generateRandomToken } from "../helpers";
+import { generateRandomToken, generateId } from "../helpers";
 import { PASSWORD_BCRYPT_SALT_ROUNDS } from "../constants";
 import { logger } from "../logger";
 
@@ -37,7 +36,7 @@ export async function createUser(data: UserNew) {
   
   const userData = {
     ...rest,
-    id: data.id ?? createId(),
+    id: data.id ?? generateId(),
     token: data.token ?? generateRandomToken(),
     password: hashPassword,
   }

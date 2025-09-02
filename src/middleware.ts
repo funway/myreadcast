@@ -30,7 +30,7 @@ export const config = {
 function isPublicPath(pathname: string): boolean {
   // 允许匿名访问的 URL 路径
   // 只支持 完全匹配 与 * 号的前缀匹配
-  const publicPaths = ['/', '/api/auth*'];
+  const publicPaths = ['/', '/api/auth*', '/api/test*'];
 
   return publicPaths.some((publicPath) => { 
     if (publicPath.endsWith('*')) { 
@@ -49,7 +49,10 @@ function isPublicPath(pathname: string): boolean {
 function isProtectedPath(pathname: string): boolean {
   // 允许匿名访问的 URL 路径
   // 只支持 完全匹配 与 * 号的前缀匹配
-  const protectedPaths = ['/admin*', '/api/server*'];
+  const protectedPaths = [
+    '/admin*',
+    '/api/server*',
+  ];
 
   return protectedPaths.some((protectedPath) => { 
     if (protectedPath.endsWith('*')) { 

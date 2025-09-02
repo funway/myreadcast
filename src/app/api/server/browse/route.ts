@@ -3,7 +3,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { logger } from '@/lib/server/logger';
 
-interface FolderItem {
+interface FSItem {
   name: string;
   path: string;
   isDirectory: boolean;
@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
     const items = await fs.readdir(normalizedPath, { withFileTypes: true });
     
     // 格式化结果
-    const folderItems: FolderItem[] = [];
+    const fsItems: FSItem[] = [];
     
     for (const item of items) {
       // 根据 showHidden 参数决定是否跳过隐藏文件/目录
@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
           continue;
         }
         
-        folderItems.push({
+        fsItems.push({
           name: item.name,
           path: itemPath, // 返回完整的绝对路径
           isDirectory
@@ -105,7 +105,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 按类型和名称排序（文件夹优先）
-    folderItems.sort((a, b) => {
+    fsItems.sort((a, b) => {
       if (a.isDirectory !== b.isDirectory) {
         return a.isDirectory ? -1 : 1;
       }
@@ -115,7 +115,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       path: normalizedPath,
-      items: folderItems
+      items: fsItems
     });
 
   } catch (error) {

@@ -1,10 +1,12 @@
 'use client';
 
-import { createLibraryAction, deleteLibraryAction, updateLibraryAction } from "@/lib/server/actions/library";
+import { deleteLibraryAction } from "@/lib/server/actions/library";
 import type { Library } from "@/lib/server/db/library";
-import { startTransition, useEffect, useState, useTransition } from 'react';
+import type { Task } from "@/lib/server/db/task";
+import { useEffect, useState, useTransition } from 'react';
 import MyIcon, { IconName } from "../MyIcon";
 import LibraryEdit from "./LibraryEdit";
+import { toast } from "react-toastify";
 
 interface LibraryWithScan extends Library {
   scanStatus: 'idle' | 'scanning' | 'error';
@@ -37,27 +39,105 @@ export default function LibrariesPanel({ initLibraries, className }: Props) {
       if (result.success) {
         setDeleteConfirmId(null);
       } else {
-        console.error(result.error);
+        toast.error(result.message);
       }
     });
   };
 
   const handleScan = async (libraryId: string) => {
+    // 1. 设置扫描状态
     setLibraries(libs => libs.map(lib => 
       lib.id === libraryId ? { ...lib, scanStatus: 'scanning' } : lib
     ));
+
     try {
-      // 模拟扫描过程
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      setLibraries(libs => libs.map(lib => 
-        lib.id === libraryId ? { ...lib, scanStatus: 'idle' } : lib
-      ));
+      // 2. 调用扫描 API
+      const response = await fetch(`/api/library/${libraryId}/scan`);
+      const result = await response.json();
+     
+      if (!result.success) {
+        throw new Error(result.message || 'Failed to start scan');
+      }
+
+      // 3. 更新 taskId 并开始轮询状态
+      const task = result.data as Task;
+      console.log(`Started scan task ${task.id} for library ${libraryId}`);
+      
+      // 4. 开始轮询任务状态
+      await pollTaskStatus(libraryId, task.id);
+
     } catch (error) {
-      console.error('Scan error:', error);
+      toast.error(`Scan error: ${error}`);
       setLibraries(libs => libs.map(lib => 
         lib.id === libraryId ? { ...lib, scanStatus: 'error' } : lib
       ));
     }
+  };
+
+  const pollTaskStatus = async (libraryId: string, taskId: string) => {
+    const poll = async () => {
+      const currentLibrary = libraries.find(lib => lib.id === libraryId);
+      try {
+        const response = await fetch(`/api/task/${taskId}`);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        
+        if (!result.success || !result.data) {
+          throw new Error('Failed to get task status');
+        }
+
+        const task = result.data as Task;
+        console.log(`Task ${taskId} status:`, task.status);
+        
+        // 更新进度信息
+        if (task.status === 'completed') {
+          // 任务完成
+          setLibraries(libs => libs.map(lib => 
+            lib.id === libraryId ? { 
+              ...lib,
+              lastScan: task.completedAt,
+              scanStatus: 'idle',
+            } : lib
+          ));
+          
+          toast.info(`Library [${currentLibrary?.name || 'Unknown Library'}] scan completed`);
+          
+          return;
+        } else if (task.status === 'failed') {
+          // 任务失败
+          const errorMessage = task.result || 'Task failed';
+          setLibraries(libs => libs.map(lib => 
+            lib.id === libraryId ? { 
+              ...lib, 
+              scanStatus: 'error',
+            } : lib
+          ));
+          toast.error(`Library [${currentLibrary?.name || 'Unknown Library'}] scan failed - ${errorMessage}`);
+          return;
+        }
+        
+        // 任务还在进行中，继续轮询
+        if (task.status === 'running' || task.status === 'pending') {
+          setTimeout(poll, 2000); // 2秒后再次检查
+        }
+        
+      } catch (error) {
+        console.error('Error polling task status:', error);
+        setLibraries(libs => libs.map(lib => 
+          lib.id === libraryId ? { 
+            ...lib, 
+            scanStatus: 'error',
+          } : lib
+        ));
+        toast.error('Failed to get scan status');
+      }
+    };
+
+    // 开始轮询
+    setTimeout(poll, 1000); // 1秒后开始第一次检查
   };
 
   // 打开编辑媒体库弹出框
@@ -98,7 +178,7 @@ export default function LibrariesPanel({ initLibraries, className }: Props) {
       </div>
 
       {/* libraries list */}
-      <ul className="list max-h-[70vh] overflow-y-auto">
+      <ul className="list max-h-[70vh] min-h-[50vh] overflow-y-auto">
         {libraries.map((library) => (
           <li key={library.id} className="list-row items-center">
             {/* icon */}
@@ -112,8 +192,8 @@ export default function LibrariesPanel({ initLibraries, className }: Props) {
                   : 'No folders'
                 }
                 </p>
-                <p className="text-xs text-base-content/50">
-                Updated at: {library.updatedAt ? new Date(library.updatedAt).toLocaleString() : 'N/A'}
+                <p className="text-xs text-base-content/50 font-mono">
+                  <span>Updated at: {library.updatedAt ? new Date(library.updatedAt).toLocaleString() : 'N/A'},</span>
                 </p>
             </div>
             {/* actions */}
