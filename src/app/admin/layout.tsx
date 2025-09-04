@@ -1,12 +1,13 @@
 import { ReactNode } from 'react'
 import NavBar from '@/ui/NavBar'
-import SideBar from '@/ui/admin/SideBar'
+import AdminSideBar from '@/ui/admin/AdminSideBar'
 
 interface AdminLayoutProps {
   children: ReactNode
 }
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
+  
   return (
     <div className="flex flex-col min-h-screen bg-base-200">
       {/* 顶部导航 */}
@@ -19,7 +20,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         
         {/* 左侧侧边栏 */}
         <aside className="flex-none bg-base-100 w-1/8 py-4">
-          <SideBar />
+          <AdminSideBar />
         </aside>
 
         {/* 内容区域 */}

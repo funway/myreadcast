@@ -9,11 +9,11 @@ export default function LibrarySelector() {
   
   // 获取当前 libraryId
   const params = useParams(); 
-  const currentLibraryId = params.id as string;
+  const currentLibraryId = params.libraryId as string;
   const currentLibrary = libraries.find(lib => lib.id === currentLibraryId);
   console.log('[LibrarySelector] total:', libraries.length,
-    'currentLibraryId:', currentLibraryId,
-    'currentLibrary:', currentLibrary?.name);
+    '| currentLibraryId:', currentLibraryId,
+    '| currentLibrary:', currentLibrary?.name);
 
   return (
     <div className="dropdown">

@@ -1,6 +1,6 @@
 import { promises as fs } from 'fs';
 import path from 'path';
-import { getLibraryById, updateLibrary } from "../db/library";
+import { LibraryService } from "../db/library";
 import { logger } from "../logger";
 import { TaskHandler } from "./handler";
 import { Book, BookNew, BookService } from '../db/book';
@@ -18,7 +18,7 @@ export class LibraryScanHandler extends TaskHandler {
     try {
       // 2. 执行操作
       // 2.1 fetch target
-      const library = await getLibraryById(libraryId);
+      const library = await LibraryService.getLibraryById(libraryId);
       logger.debug('Fetch library: ', library);
       if (!library) {
         logger.warn(`library id [${libraryId}] not exist`);
@@ -28,16 +28,14 @@ export class LibraryScanHandler extends TaskHandler {
       // 2.2 扫描 library 的所有目录以及从数据库获取它的所有 books
       const folders = library.folders;
       const scannedBooks: BookNew[] = [];
-      const existingBooks: Book[] = [];
-
+      
+      // 扫描目录获取所有 books (EPUB 文件，以及包含 audio 的文件夹)
       for (const folder of folders) { 
-        // 扫描目录获取所有 books (EPUB 文件，以及包含 audio 的文件夹)
         await this.scanFolder(folder, scannedBooks);
-        
-        // 获取数据库中记录的该目录下的所有 books
-        const booksInFolder = await BookService.getBooksFromFolder(folder);
-        existingBooks.push(...booksInFolder);
       }
+      // 获取数据库中记录的该 library 下的所有 books
+      const existingBooks: Book[] = await BookService.getBookFromLibrary(libraryId);
+
       logger.debug(`Found ${scannedBooks.length} books during scan`);
       
       // 2.3 对比数据库中的 books 与 扫描得到的 books
@@ -60,7 +58,7 @@ export class LibraryScanHandler extends TaskHandler {
       await this.updateTaskStatus('completed', `${unchangedCount} unchanged, ${toDelete.length} deleted, ${toInsert.length} added`);
       
       // 4. 更新 library 的 last_scan
-      await updateLibrary({
+      await LibraryService.updateLibrary({
         id: libraryId,
         lastScan: new Date(),
       });
@@ -83,6 +81,7 @@ export class LibraryScanHandler extends TaskHandler {
         // 处理 EPUB 文件
         if (path.extname(item).toLowerCase() === '.epub') {
           scannedBooks.push({
+            libraryId: this.task.targetId,
             type: 'epub',
             path: itemPath,
             title: path.basename(item, '.epub'),  // 去掉后缀
@@ -95,6 +94,7 @@ export class LibraryScanHandler extends TaskHandler {
         const audioFiles = await this.getAudioFiles(itemPath);
         if (audioFiles.length > 0) {
           scannedBooks.push({
+            libraryId: this.task.targetId,
             type: 'audios',
             path: itemPath,
             title: path.basename(itemPath),

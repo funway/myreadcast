@@ -37,7 +37,8 @@ import {
 	LuX,
 	LuFile,
 	LuUserCog,
-	LuChevronDown
+	LuChevronDown,
+	LuCircleUserRound
 } from "react-icons/lu";
 
 // 图标映射
@@ -74,6 +75,7 @@ const iconMap = {
 	userPlus: LuUserPlus,
 	admin: LuUserCog,
 	key: LuKeyRound,
+	author: LuCircleUserRound,
 	
 	folder:	LuFolder,
 	folderPlus: LuFolderPlus,

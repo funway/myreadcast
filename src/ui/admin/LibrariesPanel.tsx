@@ -193,7 +193,8 @@ export default function LibrariesPanel({ initLibraries, className }: Props) {
                 }
                 </p>
                 <p className="text-xs text-base-content/50 font-mono">
-                  <span>Updated at: {library.updatedAt ? new Date(library.updatedAt).toLocaleString() : 'N/A'},</span>
+                  {/* <span>Updated at: {library.updatedAt ? new Date(library.updatedAt).toLocaleString() : 'N/A'},</span> */}
+                  <span>Last Scan: {library.lastScan ? new Date(library.lastScan).toLocaleString() : 'N/A'}</span>
                 </p>
             </div>
             {/* actions */}

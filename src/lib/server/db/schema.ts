@@ -39,6 +39,7 @@ export const LibraryFolderTable = sqliteTable('library_folder', {
 
 export const BookTable = sqliteTable('book', {
   id: text('id').primaryKey(),
+  libraryId: text('library_id').notNull(),
   type: text('type', { enum: ['epub', 'audible_epub', 'audios'] }).notNull(),
   
   path: text('path').notNull().unique(), // 对于 EPUB 来说就是文件路径，对于 Audios 来说就是文件夹路径

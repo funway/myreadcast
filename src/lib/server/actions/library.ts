@@ -1,8 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { Library } from '@/lib/server/db/library';
-import { createLibrary, updateLibrary, deleteLibrary, getAllLibraries, addFolderToLibrary } from '@/lib/server/db/library';
+import { Library, LibraryService } from '@/lib/server/db/library';
 import { logger } from '@/lib/server/logger';
 import { ActionResult } from '@/lib/shared/types';
 
@@ -23,7 +22,7 @@ export async function createLibraryAction(formData: FormData): Promise<ActionRes
     };
     logger.debug('Create new library:', newLib);
 
-    const library = await createLibrary(newLib);
+    const library = await LibraryService.createLibrary(newLib);
     
     revalidatePath('/admin/libraries');
     
@@ -44,7 +43,7 @@ export async function updateLibraryAction(id: string, formData: FormData) {
       return { success: false, message: '媒体库名称不能为空' };
     }
     
-    const library = await updateLibrary({
+    const library = await LibraryService.updateLibrary({
       id: id,
       name: name.trim(),
       icon: icon,
@@ -64,7 +63,7 @@ export async function updateLibraryAction(id: string, formData: FormData) {
 
 export async function deleteLibraryAction(id: string) {
   try {
-    const library = await deleteLibrary(id);
+    const library = await LibraryService.deleteLibrary(id);
     if (!library) {
       return { success: false, message: '媒体库不存在' };
     }
@@ -79,7 +78,7 @@ export async function deleteLibraryAction(id: string) {
 
 export async function addFolderAction(libraryId: string, folderPath: string) {
   try {
-    const library = await addFolderToLibrary(libraryId, folderPath);
+    const library = await LibraryService.addFolderToLibrary(libraryId, folderPath);
     if (!library) {
       return { success: false, message: '媒体库不存在' };
     }
@@ -117,7 +116,7 @@ export async function scanLibraryAction(libraryId: string) {
 // 用于服务端组件的数据获取
 export async function getLibrariesData(): Promise<Library[]> {
   try {
-    const libraries = await getAllLibraries();
+    const libraries = await LibraryService.getAllLibraries();
     return libraries;
   } catch (error) {
     logger.error('Get libraries error:', error);

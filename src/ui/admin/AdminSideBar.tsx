@@ -2,34 +2,29 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import {
-  Cog6ToothIcon,
-  BuildingLibraryIcon,
-  UsersIcon,
-} from '@heroicons/react/24/outline'
-import { APP_NAME, APP_VERSION } from '@/lib/shared/constants'
+import { APP_VERSION } from '@/lib/shared/constants'
 import MyIcon from '../MyIcon'
 
-export default function SideBar() {
-  const pathname = usePathname() // 获取当前路径，用于高亮
+export default function AdminSideBar() {
+  const pathname = usePathname(); // 获取当前路径，用于高亮
 
   const menuItems = [
-    { 
-      label: 'System', 
-      href: '/admin', 
-      icon: <MyIcon iconName="setting" /> 
+    {
+      label: 'System',
+      href: '/admin',
+      icon: <MyIcon iconName="setting" />
     },
-    { 
-      label: 'Libraries', 
-      href: '/admin/libraries', 
-      icon: <MyIcon iconName="libraryBuilding" /> 
+    {
+      label: 'Libraries',
+      href: '/admin/libraries',
+      icon: <MyIcon iconName="libraryBuilding" />
     },
-    { 
-      label: 'Users', 
-      href: '/admin/users', 
-      icon: <MyIcon iconName="users" /> 
+    {
+      label: 'Users',
+      href: '/admin/users',
+      icon: <MyIcon iconName="users" />
     },
-  ]
+  ];
 
   return (
     <div className="w-full h-full flex flex-col">

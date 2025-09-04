@@ -7,13 +7,17 @@ import { useClientStatesStore } from '@/ui/contexts/StoreContext';
 import MyIcon from './MyIcon';
 import LibrarySelector from './LibrarySelector';
 
-const NavBar = () => {
+type NavBarProps = {
+  className?: string;
+};
+
+const NavBar = ({ className }: NavBarProps) => {
   const sessionUser = useClientStatesStore(state => state.sessionUser);
   const isAdmin = sessionUser?.role === 'admin';
   console.log('[NavBar] sessionUser:', sessionUser?.username, sessionUser?.role);
 
   return (
-    <div className="navbar bg-base-100 px-8 shadow-sm">
+    <div className={`navbar bg-base-100 px-8 shadow-sm ${className}`}>
       {/* Left side */}
       <div className="navbar-start gap-1">
         <Link className="btn btn-ghost text-xl" href='/'>
