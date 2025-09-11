@@ -38,7 +38,13 @@ import {
 	LuFile,
 	LuUserCog,
 	LuChevronDown,
-	LuCircleUserRound
+	LuCircleUserRound,
+	LuArrowDown,
+	LuArrowUp,
+	LuArrowDownZA,
+	LuArrowDownAZ,
+	LuList,
+	LuChevronLeft
 } from "react-icons/lu";
 
 // 图标映射
@@ -84,9 +90,16 @@ const iconMap = {
 	plus: LuPlus,
 	arrowRight: LuArrowRight,
 	arrowLeft: LuArrowLeft,
+	arrowUp: LuArrowUp,
+	arrowDown: LuArrowDown,
+	chevronLeft: LuChevronLeft,
 	chevronRight: LuChevronRight,
 	chevronDown: LuChevronDown,
+	sortAsc: LuArrowDownAZ,
+	sortDesc: LuArrowDownZA,
 	x: LuX,
+	list: LuList,
+	toc: LuList,
 };
 
 // 获取所有可用的图标名称

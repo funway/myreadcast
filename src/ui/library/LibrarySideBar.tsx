@@ -9,7 +9,7 @@ export default function LibrarySideBar() {
   const pathname = usePathname();  // 获取当前路径，用于高亮
   const params = useParams();
   const libraryId = params.libraryId as string; // 这里拿到 [libraryId] 的值
-  console.log('libraryId:', libraryId);
+  console.log('[LibrarySideBar] libraryId:', libraryId);
 
   const menuItems = [
     { 

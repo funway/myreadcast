@@ -1,5 +1,4 @@
-// app/library/[libraryId]/search/page.tsx
-'use client';
+"use client";
 
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -61,7 +60,7 @@ const mockSearchResults: Book[] = [
   createMockSearchResult('8', 'Catherine the Great', 'Robert K. Massie', 'audios')
 ];
 
-export default function SearchPage({ params }: { params: { libraryId: string } }) {
+export default function SearchPage() {
   const searchParams = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('relevance');
@@ -106,7 +105,7 @@ export default function SearchPage({ params }: { params: { libraryId: string } }
       {/* Search Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-base-content mb-2">
-          Search results for "<span className="text-primary">{searchQuery}</span>"
+          Search results for <span className="text-primary">{searchQuery}</span>
         </h1>
         
         {!isLoading && (
@@ -162,7 +161,8 @@ export default function SearchPage({ params }: { params: { libraryId: string } }
       {!isLoading && searchResults.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
           {searchResults.map((book) => (
-            <BookCard key={book.id} book={book} />
+            // <BookCard key={book.id} book={book} />
+            book.id
           ))}
         </div>
       )}

@@ -7,7 +7,7 @@ import { success } from 'zod';
 // import { scanLibrary } from '@/lib/server/task/factory';
 
 interface Params {
-  params: Promise<{ libraryId: string; }>;
+  params: Promise<{ libraryId: string }>;
 }
 
 export async function GET(request: Request, { params }: Params) {

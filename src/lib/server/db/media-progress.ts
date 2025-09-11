@@ -4,7 +4,7 @@
 
 import { eq, and } from "drizzle-orm";
 import { db } from "@/lib/server/db";
-import { MediaProgressTable } from "./schema";
+import { ReadingProgressTable } from "./schema";
 import { generateId } from "@/lib/server/helpers";
 
 // Position 类型定义
@@ -25,8 +25,8 @@ export type AudioPosition = {
 export type MediaPosition = EpubPosition | AudioPosition;
 
 // 类型定义
-export type MediaProgress = typeof MediaProgressTable.$inferSelect;
-type MediaProgressInsert = typeof MediaProgressTable.$inferInsert;
+export type MediaProgress = typeof ReadingProgressTable.$inferSelect;
+type MediaProgressInsert = typeof ReadingProgressTable.$inferInsert;
 export type NewMediaProgress = {
   userId: string;
   bookId: string;
@@ -46,26 +46,26 @@ export async function upsertMediaProgress(data: NewMediaProgress): Promise<Media
   // 先尝试查找现有记录
   const existingProgress = await db.query.MediaProgressTable.findFirst({
     where: and(
-      eq(MediaProgressTable.userId, data.userId),
-      eq(MediaProgressTable.bookId, data.bookId)
+      eq(ReadingProgressTable.userId, data.userId),
+      eq(ReadingProgressTable.bookId, data.bookId)
     ),
   });
 
   if (existingProgress) {
     // 更新现有记录
     const [updated] = await db
-      .update(MediaProgressTable)
+      .update(ReadingProgressTable)
       .set({
         progress: data.progress ?? existingProgress.progress,
         position: data.position ?? existingProgress.position,
       })
-      .where(eq(MediaProgressTable.id, existingProgress.id))
+      .where(eq(ReadingProgressTable.id, existingProgress.id))
       .returning();
     return updated;
   } else {
     // 创建新记录
     const [created] = await db
-      .insert(MediaProgressTable)
+      .insert(ReadingProgressTable)
       .values({
         id: generateId(),
         userId: data.userId,
@@ -84,8 +84,8 @@ export async function upsertMediaProgress(data: NewMediaProgress): Promise<Media
 export async function getMediaProgress(userId: string, bookId: string): Promise<MediaProgress | null> {
   const progress = await db.query.MediaProgressTable.findFirst({
     where: and(
-      eq(MediaProgressTable.userId, userId),
-      eq(MediaProgressTable.bookId, bookId)
+      eq(ReadingProgressTable.userId, userId),
+      eq(ReadingProgressTable.bookId, bookId)
     ),
   });
   return progress ?? null;
@@ -96,7 +96,7 @@ export async function getMediaProgress(userId: string, bookId: string): Promise<
  */
 export async function getUserMediaProgress(userId: string): Promise<MediaProgress[]> {
   return db.query.MediaProgressTable.findMany({
-    where: eq(MediaProgressTable.userId, userId),
+    where: eq(ReadingProgressTable.userId, userId),
     orderBy: (progress, { desc }) => [desc(progress.updatedAt)],
   });
 }
@@ -106,7 +106,7 @@ export async function getUserMediaProgress(userId: string): Promise<MediaProgres
  */
 export async function getBookMediaProgress(bookId: string): Promise<MediaProgress[]> {
   return db.query.MediaProgressTable.findMany({
-    where: eq(MediaProgressTable.bookId, bookId),
+    where: eq(ReadingProgressTable.bookId, bookId),
     orderBy: (progress, { desc }) => [desc(progress.updatedAt)],
   });
 }
@@ -123,9 +123,9 @@ export async function updateMediaProgress(
   if (!existingProgress) return null;
 
   const [updated] = await db
-    .update(MediaProgressTable)
+    .update(ReadingProgressTable)
     .set(data)
-    .where(eq(MediaProgressTable.id, existingProgress.id))
+    .where(eq(ReadingProgressTable.id, existingProgress.id))
     .returning();
   
   return updated ?? null;
@@ -136,10 +136,10 @@ export async function updateMediaProgress(
  */
 export async function deleteMediaProgress(userId: string, bookId: string): Promise<MediaProgress | null> {
   const [deleted] = await db
-    .delete(MediaProgressTable)
+    .delete(ReadingProgressTable)
     .where(and(
-      eq(MediaProgressTable.userId, userId),
-      eq(MediaProgressTable.bookId, bookId)
+      eq(ReadingProgressTable.userId, userId),
+      eq(ReadingProgressTable.bookId, bookId)
     ))
     .returning();
   
@@ -151,8 +151,8 @@ export async function deleteMediaProgress(userId: string, bookId: string): Promi
  */
 export async function deleteUserMediaProgress(userId: string): Promise<MediaProgress[]> {
   return db
-    .delete(MediaProgressTable)
-    .where(eq(MediaProgressTable.userId, userId))
+    .delete(ReadingProgressTable)
+    .where(eq(ReadingProgressTable.userId, userId))
     .returning();
 }
 
@@ -161,7 +161,7 @@ export async function deleteUserMediaProgress(userId: string): Promise<MediaProg
  */
 export async function deleteBookMediaProgress(bookId: string): Promise<MediaProgress[]> {
   return db
-    .delete(MediaProgressTable)
-    .where(eq(MediaProgressTable.bookId, bookId))
+    .delete(ReadingProgressTable)
+    .where(eq(ReadingProgressTable.bookId, bookId))
     .returning();
 }

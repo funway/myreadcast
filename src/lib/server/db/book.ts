@@ -1,4 +1,4 @@
-import { eq, and, like, or, inArray, asc, desc, sql } from "drizzle-orm";
+import { eq, and, like, or, inArray, asc, desc, sql, count, isNotNull } from "drizzle-orm";
 import { db } from "@/lib/server/db";
 import { BookTable } from "./schema";
 import { generateId } from "@/lib/server/helpers";
@@ -145,15 +145,15 @@ export const BookService = {
     // 使用 JSON 查询来处理 genre 字段
     if (genre && genre.length > 0) {
       const genreConditions = genre.map(g => 
-        sql`json_extract(${BookTable.genre}, '$') LIKE '%"${g}"%'`
+        sql`json_extract(${BookTable.genre}, '$') LIKE ${`%${g}%`}`
       );
       conditions.push(or(...genreConditions));
     }
 
     // 使用 JSON 查询来处理 tags 字段
     if (tags && tags.length > 0) {
-      const tagConditions = tags.map(tag => 
-        sql`json_extract(${BookTable.tags}, '$') LIKE '%"${tag}"%'`
+      const tagConditions = tags.map(t =>
+        sql`json_extract(${BookTable.tags}, '$') LIKE ${`%${t}%`}`
       );
       conditions.push(or(...tagConditions));
     }
@@ -173,7 +173,7 @@ export const BookService = {
     const orderByField = BookTable[orderBy];
     const orderClause = orderDirection === 'asc' ? asc(orderByField) : desc(orderByField);
 
-    // 执行查询
+    // 执行查询 (findMany 无法打印 generated SQL)
     // const books = await db.query.BookTable.findMany({
     //   where: conditions.length > 0 ? and(...conditions) : undefined,
     //   orderBy: [orderClause],
@@ -181,6 +181,7 @@ export const BookService = {
     //   offset,
     // });
     
+    // 构建查询语句
     const queryBuilder = db
       .select()
       .from(BookTable)
@@ -192,17 +193,77 @@ export const BookService = {
     if (offset !== undefined) {
       queryBuilder.offset(offset);
     }
-
-    // const { sql, params } = queryBuilder.toSQL();
-
     logger.debug(
       `Drizzle Query Builder:\n` +
       `  - SQL: ${queryBuilder.toSQL().sql} \n` +
       `  - Params: ${queryBuilder.toSQL().params}`);
     
+    // 执行查询
     const books = await queryBuilder.execute();
     
     return books;
+  },
+
+  queryBooksCount: async (options: BookQueryOptions = {}): Promise<number> => {
+    const {
+      libraryId,
+      type,
+      author,
+      narrator,
+      genre,
+      tags,
+      search,
+    } = options;
+
+    const conditions = [];
+
+    if (libraryId) {
+      conditions.push(eq(BookTable.libraryId, libraryId));
+    }
+
+    if (type) {
+      conditions.push(eq(BookTable.type, type));
+    }
+
+    if (author) {
+      conditions.push(like(BookTable.author, `%${author}%`));
+    }
+
+    if (narrator) {
+      conditions.push(like(BookTable.narrator, `%${narrator}%`));
+    }
+
+    if (genre && genre.length > 0) {
+      const genreConditions = genre.map(g =>
+        sql`json_extract(${BookTable.genre}, '$') LIKE '%"${g}"%'`
+      );
+      conditions.push(or(...genreConditions));
+    }
+
+    if (tags && tags.length > 0) {
+      const tagConditions = tags.map(tag =>
+        sql`json_extract(${BookTable.tags}, '$') LIKE '%"${tag}"%'`
+      );
+      conditions.push(or(...tagConditions));
+    }
+
+    if (search) {
+      conditions.push(
+        or(
+          like(BookTable.title, `%${search}%`),
+          like(BookTable.author, `%${search}%`),
+          like(BookTable.description, `%${search}%`)
+        )
+      );
+    }
+
+    // 构建 count 查询
+    const result = await db
+      .select({ count: count() })
+      .from(BookTable)
+      .where(conditions.length > 0 ? and(...conditions) : undefined);
+
+    return Number(result[0]?.count ?? 0);
   },
 
   /**
@@ -210,7 +271,7 @@ export const BookService = {
    */
   getAllAuthors: async (libraryId?: string): Promise<string[]> => {
     const conditions = [
-      sql`${BookTable.author} IS NOT NULL`,
+      isNotNull(BookTable.author),
       sql`${BookTable.author} <> ''`,
       ...(libraryId ? [eq(BookTable.libraryId, libraryId)] : []),
     ];
@@ -222,6 +283,29 @@ export const BookService = {
       .orderBy(asc(BookTable.author));
 
     return rows.map(r => r.author as string);
+  },
+
+  getAllAuthorsWithBooksCount: async (libraryId?: string) => { 
+    const conditions = [
+      isNotNull(BookTable.author),
+      sql`${BookTable.author} <> ''`,
+      ...(libraryId ? [eq(BookTable.libraryId, libraryId)] : []),
+    ];
+
+    const rows = await db
+      .select({
+        author: BookTable.author,
+        books_count: count(BookTable.id).as("books_count"),
+      })
+      .from(BookTable)
+      .where(and(...conditions))
+      .groupBy(BookTable.author)
+      .orderBy(asc(BookTable.author));
+
+    return rows.map(r => ({
+      author: r.author as string,
+      books_count: Number(r.books_count),
+    }));
   },
 
   /**
@@ -246,9 +330,9 @@ export const BookService = {
   /**
    * 获取所有书籍类型（genre）列表
    */
-  getAllGenre: async (libraryId?: string): Promise<string[]> => {
+  getAllGenres: async (libraryId?: string): Promise<string[]> => {
     const conditions = [
-      sql`${BookTable.genre} IS NOT NULL`,
+      isNotNull(BookTable.genre),
       ...(libraryId ? [eq(BookTable.libraryId, libraryId)] : []),
     ];
 
@@ -256,16 +340,35 @@ export const BookService = {
       .select({ genre: BookTable.genre })
       .from(BookTable)
       .where(and(...conditions));
+    
     const genreSet = new Set<string>();
 
     rows.forEach(row => {
-      const genres: string[] = JSON.parse(row.genre as string);
-      genres.forEach(g => {
-        if (g) genreSet.add(g);
-      });
+      if (Array.isArray(row.genre)) {
+        row.genre
+          .map(g => String(g).trim())
+          .filter(Boolean)
+          .forEach(g => genreSet.add(g));
+      }
     });
     
     return Array.from(genreSet).sort();
   },
+
+  getAllLanguages: async (libraryId?: string): Promise<string[]> => { 
+    const conditions = [
+      isNotNull(BookTable.language),
+      sql`${BookTable.language} <> ''`,
+      ...(libraryId ? [eq(BookTable.libraryId, libraryId)] : []),
+    ]
+
+    const rows = await db
+      .selectDistinct({ language: BookTable.language })
+      .from(BookTable)
+      .where(and(...conditions))
+      .orderBy(asc(BookTable.language));
+
+    return rows.map(r => r.language as string);
+  }
   
 }

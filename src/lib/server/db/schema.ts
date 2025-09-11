@@ -53,6 +53,7 @@ export const BookTable = sqliteTable('book', {
   isbn: text('isbn'),
   description: text('description'),
   coverPath: text('cover_path'),
+  language: text('language'),
   duration: integer('duration'),
   wordCount: integer('word_count'),
   
@@ -61,7 +62,7 @@ export const BookTable = sqliteTable('book', {
   ...timestamps,
 });
 
-export const MediaProgressTable = sqliteTable('media_progress', {
+export const ReadingProgressTable = sqliteTable('reading_progress', {
   id: text('id').primaryKey(),
   userId: text('user_id').notNull(),
   bookId: text('book_id').notNull(),

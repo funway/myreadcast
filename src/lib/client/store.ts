@@ -24,7 +24,8 @@ type ClientStatesActions = {
   setCount: (newCount: number) => void;
   increaseCount: () => void;
 
-  setLibraries: (libs: Library[]) => void;
+  setLibraries: (libraries: Library[]) => void;
+  updateLibrary: (libraryId: string, updates: Partial<Omit<Library, 'id' | 'createdAt'>>) => void;
 }
 
 export type ClientStatesStore = ClientStates & ClientStatesActions;
@@ -40,7 +41,7 @@ const defaultInitState: ClientStates = {
 export const createClientStatesStore = (
   initStates: ClientStates = defaultInitState,
 ) => {
-  return createStore<ClientStatesStore>()((set) => {
+  return createStore<ClientStatesStore>()((set, get) => {
     console.log('<createClientStatesStore → createStore> 初始化 ClientStatesStore 对象', initStates);
     return {
       ...initStates,
@@ -57,9 +58,23 @@ export const createClientStatesStore = (
         set((state) => ({ count: state.count + 1 }));
       },
 
-      setLibraries: (libs) => {
-        console.log('<setLibraries> 设置 libraries:', libs.length);
-        set({ libraries: libs });
+      setLibraries: (libraries) => {
+        console.log('<setLibraries> 设置 libraries:', libraries.length);
+        set({ libraries: libraries });
+      },
+
+      updateLibrary: (libraryId: string, updates: Partial<Omit<Library, 'id' | 'createdAt'>>) => {
+        console.log('<updateLibrary>', libraryId, updates);
+        
+        const updatedLibraries = get().libraries.map(library => { 
+          if (library.id === libraryId) {
+            return { ...library, ...updates };
+          } else { 
+            return library;
+          } 
+        });
+        
+        set({ libraries: updatedLibraries });
       },
     };
   })

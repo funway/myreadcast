@@ -31,7 +31,10 @@ const NavBar = ({ className }: NavBarProps) => {
 
       <div className="navbar-center gap-1">
         {/* 搜索栏 */}
-        <input name="search" type="text" placeholder="Search" className="input input-bordered md:w-auto" />
+        <label className="input">
+          <MyIcon iconName="search" className="h-[1em] opacity-50" />
+          <input name="search" type="search" placeholder="Search" />
+        </label>
       </div>
 
       {/* Right side */}

@@ -15,36 +15,34 @@ export default function BookCard({
   className = "" 
 }: BookCardProps) {
   return (
-    <div className={`card bg-base-100 shadow-lg hover:shadow-xl transition-shadow cursor-pointer ${className}`}>
-      <figure className="aspect-[3/4] bg-gray-200">
-        {book.coverPath ? (
-          <img 
-            src={book.coverPath} 
-            alt={book.title}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-gray-400">
-            <svg className="w-12 h-12" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-        )}
-      </figure>
+    <div className={`relative rounded-lg overflow-hidden bg-white shadow-md hover:shadow-2xl transition-all duration-300 cursor-pointer group ${className}`}>
+      {/* 书籍封面 */}
+      <div className="aspect-[3/4] bg-gray-200">
+        <img 
+          src={book.coverPath ?? "/image/book_placeholder.jpg"} 
+          alt={book.title}
+          className="w-full h-full object-fill"
+        />
+      </div>
+      
+      {/* 重叠的文字信息 */}
       {(showTitle || showAuthor) && (
-        <div className="card-body p-3">
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/70 to-transparent text-white p-3">
           {showTitle && (
-            <h3 className="card-title text-sm font-medium line-clamp-2">
+            <h3 className="text-sm font-semibold mb-1 line-clamp-2 leading-tight">
               {book.title}
             </h3>
           )}
           {showAuthor && (
-            <p className="text-xs text-gray-600 line-clamp-1">
+            <p className="text-xs text-gray-200 line-clamp-1 opacity-90">
               {book.author}
             </p>
           )}
         </div>
       )}
+      
+      {/* 悬停效果 - 可选 */}
+      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300" />
     </div>
   );
 }

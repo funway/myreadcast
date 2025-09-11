@@ -2,6 +2,8 @@ import fs from 'fs';
 import { promises as fsPromises } from 'fs';
 import path from 'path';
 import { LOG_DIR, LOG_MAX_FILES, LOG_MAX_FILE_SIZE, LOG_LEVEL } from './constants';
+import { LibsqlError } from '@libsql/client';
+import { DrizzleQueryError } from 'drizzle-orm';
 
 // 定义日志级别
 enum LogLevel {
@@ -126,16 +128,19 @@ class Logger {
     
     if (error) {
       let errorData: string | undefined;
-      if (error instanceof Error) {
-        errorData = error.stack;
+      
+      if (error instanceof DrizzleQueryError) { 
+        errorData = `[DrizzleQueryError] ${error.cause ?? ''}\n` + error.message;
+      } else if (error instanceof Error) {
+        errorData = `[${error.constructor?.name}] ${error.stack}`;
       } else {
         try {
-          errorData = `Error: ${JSON.stringify(error)}`;
+          errorData = `[${error.constructor?.name} Error]: ${JSON.stringify(error)}`;
         } catch {
-          errorData = `Error: String(error)`;
+          errorData = `[${error.constructor?.name} Error]: String(error)`;
         }
       }
-      logContent += `\n  ${errorData}`;
+      logContent += `\n${errorData}`;
     }
     
     return logContent + '\n';

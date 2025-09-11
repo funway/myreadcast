@@ -112,7 +112,6 @@ export async function scanLibraryAction(libraryId: string) {
   }
 }
 
-
 // 用于服务端组件的数据获取
 export async function getLibrariesData(): Promise<Library[]> {
   try {

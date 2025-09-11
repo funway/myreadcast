@@ -11,14 +11,14 @@ export default async function MainLayout({
   
   // return root layout template
   return (
-    <div className="flex flex-col min-h-screen bg-base-200">
+    <div className="flex flex-col h-screen bg-base-200">
       {/* 顶部导航 */}
       <header className="w-full z-[10]">
         <NavBar />
       </header>
 
       {/* 主体区域 */}
-      <div className="flex-1 flex">
+      <div className="flex-1 flex overflow-hidden">
         
         {/* 左侧侧边栏 */}
         <aside className="flex-none bg-base-100 w-24">
@@ -26,7 +26,7 @@ export default async function MainLayout({
         </aside>
 
         {/* 内容区域 */}
-        <main className="">
+        <main className="overflow-y-auto w-full">
           {children}
         </main>
 

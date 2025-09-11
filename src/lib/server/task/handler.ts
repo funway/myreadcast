@@ -9,7 +9,7 @@ export abstract class TaskHandler {
   }
 
   protected async updateTaskStatus(status: Task['status'], result?: string) { 
-    logger.debug('Update task status:', { status, result, task: this.task });
+    logger.debug('Update task status:', { status, result, taskId: this.task.id });
     this.task.status = status;
     this.task.result = result ?? this.task.result;
     

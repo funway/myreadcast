@@ -28,7 +28,7 @@ const ThemeSelector = () => {
       </div>
       
       {/* Dropdown Content */}
-      <div tabIndex={0} className="dropdown-content bg-base-200 text-base-content rounded-box h-[30.5rem] max-h-[calc(100vh-8.6rem)] overflow-y-auto mt-1">
+      <div tabIndex={0} className="dropdown-content bg-base-200 text-base-content rounded-box h-[30.5rem] max-h-[calc(100vh-8.6rem)] overflow-y-auto mt-1 shadow-2xl">
         <ul className="menu w-56">
           <li className="menu-title text-xs">Theme</li>
           {DAISY_THEMES.map((themeName) => (

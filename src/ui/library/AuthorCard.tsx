@@ -1,8 +1,8 @@
 import React from 'react';
+import MyIcon from '../MyIcon';
 
 interface AuthorCardProps {
   author: {
-    id: string;
     name: string;
     bookCount: number;
     avatar?: string;
@@ -13,20 +13,12 @@ interface AuthorCardProps {
 export default function AuthorCard({ author, className = "" }: AuthorCardProps) {
   return (
     <div className={`card bg-base-100 shadow-lg hover:shadow-xl transition-shadow cursor-pointer ${className}`}>
-      <figure className="aspect-square bg-gray-200 p-4">
-        {author.avatar ? (
-          <img 
-            src={author.avatar} 
-            alt={author.name}
-            className="w-full h-full object-cover rounded-full"
-          />
-        ) : (
-          <div className="w-full h-full rounded-full bg-primary/10 flex items-center justify-center">
-            <span className="text-2xl font-bold text-primary">
-              {author.name.charAt(0).toUpperCase()}
-            </span>
-          </div>
-        )}
+      <figure className="aspect-square bg-gray-200">
+        <img 
+          src={author.avatar ?? "/image/avatar_placeholder.png"} 
+          alt={author.name}
+          className="w-full h-full object-fill"
+        />
       </figure>
       <div className="card-body p-3">
         <h3 className="card-title text-sm font-medium line-clamp-2">

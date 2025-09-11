@@ -5,6 +5,7 @@ import { logger } from "../logger";
 import { TaskHandler } from "./handler";
 import { Book, BookNew, BookService } from '../db/book';
 import { AUDIO_EXTENSIONS } from '../constants';
+import { DrizzleQueryError } from 'drizzle-orm';
 
 
 export class LibraryScanHandler extends TaskHandler { 
@@ -64,8 +65,11 @@ export class LibraryScanHandler extends TaskHandler {
       });
     } catch (error) {
       logger.error(`Failed to scan for libraryId: ${libraryId}`, error);
-      
-      this.updateTaskStatus('failed', String(error));
+      if (error instanceof DrizzleQueryError) {
+        this.updateTaskStatus('failed', String(error.cause));
+      } else { 
+        this.updateTaskStatus('failed', String(error));
+      }
     }
   }
 

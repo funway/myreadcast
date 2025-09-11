@@ -43,27 +43,12 @@ export async function GET(
     const tags = searchParams.get('tags');
     if (tags) options.tags = tags.split(',').map(tag => tag.trim());
     
-    // 处理排序参数
-    const orderBy = searchParams.get('orderBy');
-    if (orderBy) options.orderBy = orderBy as BookQueryOptions['orderBy'];
-
-    const orderDirection = searchParams.get('orderDirection');
-    if (orderDirection) options.orderDirection = orderDirection as BookQueryOptions['orderDirection'];
-
-    // 处理分页参数
-    const limit = searchParams.get('limit');
-    if (limit) options.limit = parseInt(limit, 10);
-
-    const offset = searchParams.get('offset');
-    if (offset) options.offset = parseInt(offset, 10);
-    
     // 调用服务层方法
-    const books = await BookService.queryBooks(options);
-    logger.debug('[API] Query books:', books);
+    const count = await BookService.queryBooksCount(options);
 
     return NextResponse.json({
       success: true,
-      data: books,
+      data: count,
     });
 
   } catch (error) {
