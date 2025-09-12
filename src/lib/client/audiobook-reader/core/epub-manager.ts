@@ -1,26 +1,9 @@
 import Epub, { Book, Rendition, Location, NavItem } from 'epubjs';
-import { ReaderState } from '../types';
+import { EpubViewSettings, ReaderState } from '../types';
+import { getAppColors } from '../utils';
 
 // A callback for when the manager needs to update the central state
 type StateUpdater = (newState: Partial<ReaderState>) => void;
-
-// // Font settings interface
-// export interface FontSettings {
-//   fontFamily?: string;
-//   fontSize?: string;
-//   lineHeight?: string;
-// }
-
-// // Theme options
-// export type ThemeType = 'light' | 'dark' | 'sepia' | 'high-contrast';
-
-// export interface ThemeConfig {
-//   name: ThemeType;
-//   backgroundColor: string;
-//   textColor: string;
-//   linkColor?: string;
-// }
-
 
 export class EpubManager {
   /**
@@ -54,13 +37,15 @@ export class EpubManager {
       const N = 512;
       await this.book.locations.generate(N);
       console.log('EPUB locations generated', this.book.locations);
+
+      this.updateState({ toc: this.getToc() });
     } catch (error) {
       console.error('Error loading EPUB:', error);
       this.updateState({ error: { message: 'Failed to load book.' } });
     }
   }
 
-  public attachTo(element: HTMLElement) {
+  public attachTo(element: HTMLElement, settings: EpubViewSettings) {
     if (!this.book || !element) {
       console.error('Book not loaded or element not provided to attachTo.');
       return;
@@ -69,24 +54,20 @@ export class EpubManager {
     this.rendition = this.book.renderTo(element, {
       width: '100%',
       height: '100%',
-      spread: 'auto', // Use single or double page spread based on width
+      spread: 'auto',
+      // manager: 'continuous',
     });
-
-    // this.applyFontSettings();
-    // this.applyTheme(this.currentTheme);
-
+    this.applySettings(settings);
     this.rendition.display();
 
     // Listen to location changes to update page numbers
     this.rendition.on('relocated', (location: Location) => {
-      
       const cfi = location.start.cfi;
-      const percentage = this.book?.locations.percentageFromCfi(cfi);
-      // var displayPercentage = Math.floor(percentage * 100);
+      const percentage = this.book?.locations.percentageFromCfi(cfi) ?? 0;
       console.log("[epub.js] relocated:", location, cfi, percentage);
 
       const currentPage = location.start.location;
-      this.updateState({ currentPage });
+      this.updateState({ currentCfi: cfi });
     });
   }
 
@@ -108,7 +89,7 @@ export class EpubManager {
     return this.book?.navigation.toc || [];
   }
 
-  public async goToTocItem(href: string) {
+  public async goToHref(href: string) {
     if (!this.rendition) {
       console.error('Rendition not available');
       return;
@@ -140,5 +121,29 @@ export class EpubManager {
 
   public prevPage() {
     this.rendition?.prev();
+  }
+
+  public applySettings(settings: EpubViewSettings) {
+    console.log('EpubView apply settings:', settings);
+    if (!this.rendition) return;
+    
+    // const themeColors = themeColorMap[settings.theme] || themeColorMap.light;
+    const themeColors = getAppColors();
+    const rules = {
+      '*': {
+        'font-family': `${settings.fontFamily} !important`,
+        'line-height': `${settings.lineHeight} !important`,
+        'color': `${themeColors.color} !important`,
+        'background-color': `transparent !important`,
+      },
+      'body': {
+        'font-size': `${settings.fontSize}% !important`,
+        'background': `${themeColors.background} !important`,
+      },
+    };
+
+    const dynamicThemeName = 'current-settings';
+    this.rendition.themes.register(dynamicThemeName, rules);
+    this.rendition.themes.select(dynamicThemeName);
   }
 }

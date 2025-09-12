@@ -1,15 +1,28 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { NavItem } from 'epubjs';
 import { KEYBOARD_SHORTCUTS, reader } from '@/lib/client/audiobook-reader';
 import { useAudioBookReader } from '../hooks/useAudioBookReader';
 import MyIcon from '@/ui/MyIcon';
+import ThemeSelector from '@/ui/ThemeSelector';
+
+const FONT_FAMILIES = [
+  'serif',
+  'sans-serif',
+  'cursive',
+  'monospace',
+];
 
 export function EpubViewer() {
-  const { currentBook } = useAudioBookReader();
+  const { currentBook, settings, toc } = useAudioBookReader();
   const [openDrawer, setOpenDrawer] = useState<null | 'toc' | 'settings'>(null);
+  const activeDrawerContent = useRef<null | 'toc' | 'settings'>(null);
+  if (openDrawer !== null) {
+    activeDrawerContent.current = openDrawer;
+  }
   const viewerRef = useRef<HTMLDivElement>(null);
-  
+
   useEffect(
     () => {
       // 1. setup epub view
@@ -17,6 +30,9 @@ export function EpubViewer() {
       if (viewerElement) {
         reader.attachView(viewerElement);
       }
+
+      // setToc(reader.getToc());
+      console.log(toc);
 
       // 2. setup key events
       const handleKeyDown = (event: KeyboardEvent) => {
@@ -40,6 +56,75 @@ export function EpubViewer() {
         window.removeEventListener("keydown", handleKeyDown);
       };
     }, []
+  );
+
+  const handleTocClick = (href: string) => {
+    reader.goToHref(href);
+    setOpenDrawer(null);
+  };
+
+  const renderToc = (items: NavItem[]) => (
+    <ul className="menu p-4 w-full text-base-content">
+      {items.map((item) => (
+        <li key={item.id}>
+          <a onClick={() => handleTocClick(item.href)}>{item.label}</a>
+          {item.subitems && item.subitems.length > 0 && (
+            <ul>{renderToc(item.subitems)}</ul>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+
+  const renderSettings = () => (
+    <div className="p-4 space-y-6">
+      {/* Font Family */}
+      <div>
+        <span className="label-text">Font Family</span>
+        <select
+          className="select select-bordered w-full mt-2"
+          value={settings.epubView.fontFamily}
+          onChange={(e) => reader.updateSettings({ epubView: { fontFamily: e.target.value } })}
+        >
+          {FONT_FAMILIES.map(font => (
+            <option key={font} value={font}>{font}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Font Size */}
+      <div>
+        <div className="flex justify-between items-center">
+          <span className="label-text">Font Size</span>
+          <span className="badge badge-ghost">{settings.epubView.fontSize}%</span>
+        </div>
+        <input
+          type="range"
+          min="80"
+          max="200"
+          value={settings.epubView.fontSize}
+          onChange={(e) => reader.updateSettings({ epubView: { fontSize: parseInt(e.target.value) } })}
+          className="range range-primary mt-2"
+        />
+      </div>
+
+      {/* Line Height */}
+      <div>
+        <div className="flex justify-between items-center">
+          <span className="label-text">Line Spacing</span>
+          <span className="badge badge-ghost">{settings.epubView.lineHeight}</span>
+        </div>
+        <input
+          type="range"
+          min="1"
+          max="2.5"
+          step="0.1"
+          value={settings.epubView.lineHeight}
+          onChange={(e) => reader.updateSettings({ epubView: { lineHeight: parseFloat(e.target.value) } })}
+          className="range range-primary mt-2"
+        />
+      </div>
+    </div>
   );
 
   return (
@@ -90,7 +175,7 @@ export function EpubViewer() {
         <div
           ref={viewerRef}
           id="epub-viewer-area"
-          className="h-full w-full bg-base-200 rounded-lg"
+          className="h-full w-full rounded-lg"
         />
 
         <div className="absolute inset-2 flex justify-between items-center pointer-events-none">
@@ -116,11 +201,10 @@ export function EpubViewer() {
 
       {/* Drawer */}
       <div
-        className={`absolute top-0 left-0 z-50 h-full w-80 bg-base-100 shadow-lg transition-transform duration-500 transform ${
-          openDrawer ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        className={`flex flex-col absolute top-0 left-0 z-50 h-full w-80 shadow-lg bg-base-100
+          transform transition-transform duration-300 ${openDrawer ? 'translate-x-0' : '-translate-x-full'}`}
       >
-        <div className="flex items-center p-4 gap-2">
+        <div className="flex-shrink-0 flex items-center p-4 gap-2">
           <button
             onClick={() => setOpenDrawer(null)}
             className="btn btn-sm btn-circle btn-ghost"
@@ -128,18 +212,14 @@ export function EpubViewer() {
             <MyIcon iconName="arrowLeft"/>
           </button>
           <h2 className="font-bold text-lg">
-            {openDrawer === 'toc' ? 'Table of Contents' : 'Reader Setting'}
+            {activeDrawerContent.current === 'toc' ? 'Table of Contents' : 'Reader Setting'}
           </h2>
         </div>
-          {openDrawer === 'toc' ? (
-            <>
-              {/* 显示 Epub 的 Table of Contents */}
-            </>
-          ) : (
-            <>
-              {/* 使用 DaisyUI 的 range 实现 fontsize, linespace 调节，font family 选择，以及 theme 选择 */}
-            </>
-          )}
+
+        <div className="flex-grow overflow-y-auto">
+          {activeDrawerContent.current === 'toc' && renderToc(toc)}
+          {activeDrawerContent.current === 'settings' && renderSettings()}
+        </div>
       </div>
     </div>
   );

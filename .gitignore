@@ -46,3 +46,4 @@ project.md
 *.db
 /logs/*
 /dist/*
+/public/books

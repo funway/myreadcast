@@ -11,7 +11,7 @@ import { reader } from "@/lib/client/audiobook-reader";
 export default async function TestPage() {
 
   return (
-    <div className="flex flex-col items-center justify-center p-4 gap-4 bg-base-300">
+    <div className="flex flex-col items-center justify-center p-4 gap-4">
       <AudioBookReader />
       <div className="divider" />
       <TestUI></TestUI>

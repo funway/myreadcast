@@ -4,8 +4,49 @@ import {
   ReaderState,
   ReaderEvents,
   ShortcutAction,
+  ReaderSettings,
+  AudioPlaySettings,
+  EpubViewSettings,
 } from '../types';
-import { EpubManager } from './epub-manager'; // Import the new manager
+import { EpubManager } from './epub-manager';
+
+const SETTINGS_KEY = 'myreadcast-reader-settings';
+const defaultSettings: ReaderSettings = {
+  epubView: {
+    fontFamily: 'sans-serif',
+    fontSize: 100,
+    lineHeight: 1.5,
+  },
+  audioPlay: {
+    volume: 1,
+    playbackRate: 1,
+  }
+};
+
+const loadReaderSettings = (): ReaderSettings => {
+  try {
+    const stored = localStorage.getItem(SETTINGS_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      // Deep merge with defaults to ensure all keys are present
+      return {
+        epubView: { ...defaultSettings.epubView, ...(parsed.epubView || {}) },
+        audioPlay: { ...defaultSettings.audioPlay, ...(parsed.audioPlay || {}) },
+      }
+    }
+  } catch (error) {
+    console.error('Failed to load reader settings:', error);
+  }
+  return defaultSettings;
+};
+
+const saveReaderSettings = (settings: ReaderSettings) => {
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  } catch (error) {
+    console.error('Failed to save reader settings:', error);
+  }
+};
 
 class AudioBookReader {
   private static instance: AudioBookReader;
@@ -14,15 +55,10 @@ class AudioBookReader {
 
   // Manager Instances
   private epubManager: EpubManager;
-  // TODO, other managers
 
   private constructor() {
     this.state = this.getInitialState();
-    
-    // Pass the setState method to the manager so it can update the central state
     this.epubManager = new EpubManager(this.setState.bind(this));
-
-    // TODO: Initialize other managers (AudioManager, etc.)
   }
 
   public static getInstance(): AudioBookReader {
@@ -33,28 +69,27 @@ class AudioBookReader {
   }
 
   private getInitialState(): ReaderState {
+    const settings = loadReaderSettings();
     return {
       isOpen: false,
-      currentBook: null,
       isPlaying: false,
+      settings: loadReaderSettings(),
+      
+      currentBook: null,
+      toc: [],
 
-      currentTime: 0,
-      volume: 1,
-      playbackRate: 1,
-      currentTrackIndex: 0,
       error: null, // Initialize error state
     };
   }
 
   /**
    * 
-   * @returns Return a copy of the ReaderState
+   * @returns Return a new copy of the ReaderState
    */
   public getState(): ReaderState {
     return { ...this.state };
   }
 
-  // 更新状态并发出事件的私有方法
   private setState(newState: Partial<ReaderState>) {
     // Merge the new state with the existing state
     const updatedState = { ...this.state, ...newState };
@@ -102,9 +137,17 @@ class AudioBookReader {
     this.epubManager.prevPage();
   }
 
+  public getToc() {
+    return this.epubManager.getToc();
+  }
+
+  public goToHref(href: string) {
+    this.epubManager.goToHref(href);
+  }
+
   public attachView(element: HTMLElement) {
     if (this.state.currentBook?.type === 'epub' || this.state.currentBook?.type === 'audible_epub') {
-      this.epubManager.attachTo(element);
+      this.epubManager.attachTo(element, this.state.settings.epubView);
     }
   }
 
@@ -130,8 +173,24 @@ class AudioBookReader {
     }
   }
 
-  // --- Public Event Subscription Methods ---
+  public updateSettings(updates: { epubView?: Partial<EpubViewSettings>, audioPlay?: Partial<AudioPlaySettings> }) {
+    console.log("update reader settings:", updates);
+    const currentSettings = this.state.settings;
+    const newSettings: ReaderSettings = {
+      epubView: { ...currentSettings.epubView, ...(updates.epubView || {}) },
+      audioPlay: { ...currentSettings.audioPlay, ...(updates.audioPlay || {}) },
+    };
 
+    saveReaderSettings(newSettings);
+    
+    if (updates.epubView) {
+      this.epubManager.applySettings(newSettings.epubView);
+    }
+
+    this.setState({ settings: newSettings });
+  }
+
+  // --- Public Event Subscription Methods ---
   public on<Key extends keyof ReaderEvents>(
     type: Key,
     handler: (event: ReaderEvents[Key]) => void

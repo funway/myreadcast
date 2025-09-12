@@ -1,3 +1,5 @@
+import { NavItem } from "epubjs";
+
 export type BookType = 'epub' | 'audible_epub' | 'audios'
 
 export interface AudioTrack {
@@ -59,21 +61,32 @@ export const KEYBOARD_SHORTCUTS = {
 
 export type ShortcutAction = typeof KEYBOARD_SHORTCUTS[keyof typeof KEYBOARD_SHORTCUTS];
 
-// 阅读器状态
-export interface ReaderState {
-  isOpen: boolean;
-  currentBook: BookConfig | null;
-  
-  // EPUB 相关
-  currentPage?: number;
-  totalPages?: number;
-  
-  // 音频相关
-  isPlaying: boolean;
+export interface EpubViewSettings {
+  fontFamily: string;
+  fontSize: number;
+  lineHeight: number;
+}
+
+export interface AudioPlaySettings {
   volume: number;
   playbackRate: number;
-  currentTrackIndex: number;
-  currentTime: number; 
+}
+
+export interface ReaderSettings {
+  epubView: EpubViewSettings;
+  audioPlay: AudioPlaySettings;
+}
+
+export interface ReaderState {
+  isOpen: boolean;
+  isPlaying: boolean;
+  settings: ReaderSettings;
+  
+  currentBook: BookConfig | null;
+  toc: NavItem[];
+  currentCfi?: string;
+  currentTrack?: string;
+  currentTime?: number; 
   
   // 同步相关
   currentHighlightId?: string;
@@ -82,7 +95,6 @@ export interface ReaderState {
   error?: { message: string; code?: string } | null;
 }
 
-// 事件类型
 export type ReaderEvents = {
   'state-changed': ReaderState;
   'book-loaded': BookConfig;
