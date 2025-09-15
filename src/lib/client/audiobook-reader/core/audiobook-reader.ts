@@ -1,3 +1,5 @@
+"use client";
+
 import mitt, { Emitter } from 'mitt';
 import {
   BookConfig,
@@ -9,6 +11,7 @@ import {
   EpubViewSettings,
 } from '../types';
 import { EpubManager } from './epub-manager';
+import { AudioManager } from './audio-manager';
 
 const SETTINGS_KEY = 'myreadcast-reader-settings';
 const defaultSettings: ReaderSettings = {
@@ -20,6 +23,8 @@ const defaultSettings: ReaderSettings = {
   audioPlay: {
     volume: 1,
     playbackRate: 1,
+    autoPlay: false,
+    continuousPlay: true,
   }
 };
 
@@ -28,7 +33,6 @@ const loadReaderSettings = (): ReaderSettings => {
     const stored = localStorage.getItem(SETTINGS_KEY);
     if (stored) {
       const parsed = JSON.parse(stored);
-      // Deep merge with defaults to ensure all keys are present
       return {
         epubView: { ...defaultSettings.epubView, ...(parsed.epubView || {}) },
         audioPlay: { ...defaultSettings.audioPlay, ...(parsed.audioPlay || {}) },
@@ -53,12 +57,27 @@ class AudioBookReader {
   private emitter: Emitter<ReaderEvents> = mitt<ReaderEvents>();
   private state: ReaderState;
 
-  // Manager Instances
   private epubManager: EpubManager;
+  private audioManager: AudioManager;
 
   private constructor() {
     this.state = this.getInitialState();
     this.epubManager = new EpubManager(this.setState.bind(this));
+    this.audioManager = new AudioManager(this.setState.bind(this));
+  }
+
+  private getInitialState(): ReaderState {
+    return {
+      isOpen: false,
+      isPlaying: false,
+      settings: loadReaderSettings(),
+      
+      currentBook: null,
+      toc: [],
+      // currentCfi?: string;              // 当前的 EPUB CFI (阅读进度)
+      // currentTrack?: number;            // 当前选中的 track idx
+      // currentTrackTime?: number;        // 当前 track 播放的时间点 (播放进度)
+    };
   }
 
   public static getInstance(): AudioBookReader {
@@ -68,44 +87,42 @@ class AudioBookReader {
     return AudioBookReader.instance;
   }
 
-  private getInitialState(): ReaderState {
-    const settings = loadReaderSettings();
-    return {
-      isOpen: false,
-      isPlaying: false,
-      settings: loadReaderSettings(),
-      
-      currentBook: null,
-      toc: [],
-
-      error: null, // Initialize error state
-    };
+  /**
+   * 
+   * @returns Return the ReaderState
+   */
+  public getState(): ReaderState {
+    // return { ...this.state };
+    return this.state;
   }
 
   /**
-   * 
-   * @returns Return a new copy of the ReaderState
+   * Merge the given partial state into the current {@link ReaderState}.  
+   * If the state changes, update it and emit a `"state-changed"` event.
+   *
+   * @param newState - Partial state update
+   * @emits `state-changed` - Emitted only when the state has actually changed
    */
-  public getState(): ReaderState {
-    return { ...this.state };
-  }
-
   private setState(newState: Partial<ReaderState>) {
-    // Merge the new state with the existing state
     const updatedState = { ...this.state, ...newState };
     
-    // Only emit if the state has actually changed
+    // TODO - 使用 JSON.stringfy 并不是一个很好的对象比较的方案
     if (JSON.stringify(this.state) !== JSON.stringify(updatedState)) {
       this.state = updatedState;
       this.emit('state-changed', this.state);
+      console.log("<reader> setState, state-changed (emit)", newState);
+    } else {
+      console.log("<reader> setState, no-changed");
     }
   }
 
   public async open(bookConfig: BookConfig) {
-    console.log('Opening book:', bookConfig.title || bookConfig.path);
-    // Reset state before opening a new book
+    console.log('<reader> Opening book:', bookConfig.title || bookConfig.path);
+    
+    // 1. Reset state before opening a new book
     this.close();
     
+    // 2. Load new book
     this.setState({
       isOpen: true,
       currentBook: bookConfig,
@@ -114,7 +131,12 @@ class AudioBookReader {
     if (bookConfig.type === 'epub' || bookConfig.type === 'audible_epub') {
       await this.epubManager.load(bookConfig.path);
     }
-    // TODO: Handle 'audios' type by loading AudioManager
+    if (bookConfig.type === 'audios' || bookConfig.type === 'audible_epub') {
+      if (bookConfig.playlist && bookConfig.playlist.length > 0) {
+        this.audioManager.load(bookConfig.playlist);
+        this.audioManager.applySettings(this.state.settings.audioPlay);
+      }
+    }
 
     this.emit('book-loaded', bookConfig);
   }
@@ -122,9 +144,9 @@ class AudioBookReader {
   public close() {
     if (!this.state.isOpen) return;
 
-    console.log('Closing reader.');
+    console.log('<reader> Closing reader.');
     this.epubManager.destroy();
-    // TODO: Destroy other managers
+    this.audioManager.destroy();
     
     this.setState(this.getInitialState());
   }
@@ -137,12 +159,64 @@ class AudioBookReader {
     this.epubManager.prevPage();
   }
 
+  public nextTrack() {
+    this.audioManager.next();
+  }
+
+  public prevTrack() {
+    this.audioManager.prev();
+  }
+
+  public togglePlay() {
+    this.audioManager.togglePlay();
+  }
+
   public getToc() {
     return this.epubManager.getToc();
   }
 
+  /**
+   * Get current trak's playback time lively
+   * @returns 
+   */
+  public getCurrentSeek() {
+    return this.audioManager.getCurrentSeek();
+  }
+
   public goToHref(href: string) {
     this.epubManager.goToHref(href);
+  }
+
+  public rewind(seconds: number = 10) {
+    this.audioManager.rewind(seconds);
+  }
+
+  public forward(seconds: number = 10) {
+    this.audioManager.forward(seconds);
+  }
+  
+  public setPlaybackRate(rate: number) {
+    const maxRate = 2;
+    const minRate = 0.5;
+    const clamped = Math.max(minRate, Math.min(maxRate, rate));
+    this.audioManager.setRate(clamped);
+    this.updateSettings({ audioPlay: { playbackRate: clamped } })
+  }
+
+  public setVolume(volume: number) {
+    const maxVolume = 1;
+    const minVolume = 0;
+    const clamped = Math.max(minVolume, Math.min(maxVolume, volume));
+    this.audioManager.setVolume(clamped);
+    this.updateSettings({ audioPlay: { volume: clamped } })
+  }
+
+  public playTrack(index: number, offset?: number) {
+    this.audioManager.playTrack(index, offset);
+  }
+  
+  public seekToTrack(trackIndex: number, offset: number) {
+    this.audioManager.seekToTrack(trackIndex, offset);
   }
 
   public attachView(element: HTMLElement) {
@@ -156,16 +230,23 @@ class AudioBookReader {
   }
   
   public handleShortcut(action: ShortcutAction) {
-    console.log(`Shortcut action: ${action}`);
+    if (!this.state.isOpen) return;
+    console.log(`<reader> handle shortcut action: ${action}`);
     switch (action) {
-      case 'togglePlay':
-        // this.audioManager.togglePlay();
-        break;
       case 'nextPage':
         this.epubManager.nextPage();
         break;
       case 'prevPage':
         this.epubManager.prevPage();
+        break;
+      case 'volumeUp':
+        this.setVolume(this.state.settings.audioPlay.volume + 0.1);
+        break;
+      case 'volumeDown':
+        this.setVolume(this.state.settings.audioPlay.volume - 0.1);
+        break;
+      case 'togglePlay':
+        this.audioManager.togglePlay();
         break;
       case "closeModal":
         this.close();
@@ -174,7 +255,7 @@ class AudioBookReader {
   }
 
   public updateSettings(updates: { epubView?: Partial<EpubViewSettings>, audioPlay?: Partial<AudioPlaySettings> }) {
-    console.log("update reader settings:", updates);
+    console.log("<reader> update reader settings:", updates);
     const currentSettings = this.state.settings;
     const newSettings: ReaderSettings = {
       epubView: { ...currentSettings.epubView, ...(updates.epubView || {}) },
@@ -185,6 +266,9 @@ class AudioBookReader {
     
     if (updates.epubView) {
       this.epubManager.applySettings(newSettings.epubView);
+    }
+    if (updates.audioPlay) {
+      this.audioManager.applySettings(newSettings.audioPlay);
     }
 
     this.setState({ settings: newSettings });
@@ -217,8 +301,6 @@ class AudioBookReader {
   ) {
     this.emitter.off(type, handler);
   }
-
-  // --- Private Event Emission Method ---
 
   private emit<Key extends keyof ReaderEvents>(
     type: Key,

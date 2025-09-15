@@ -1,15 +1,51 @@
 'use client';
 
-import { useAudioBookReader } from './hooks/useAudioBookReader';
+import { useReaderState } from './hooks/useReaderState';
 import { EpubViewer } from './components/EpubViewer';
 import { AudioPlayer } from './components/AudioPlayer';
+import { useEffect } from 'react';
+import { KEYBOARD_SHORTCUTS, reader } from '@/lib/client/audiobook-reader';
 
 /**
  * The main <AudioBookReader /> component.
  * It acts as a frame, rendering either the EPUB modal or the audio-only bar.
  */
 export function AudioBookReader() {
-  const { isOpen, currentBook } = useAudioBookReader();
+  console.log('[AudioBookReader] rendering');
+  // const { isOpen, currentBook } = useReaderState();
+  const { isOpen, currentBook } = useReaderState(
+    (state) => ({ isOpen: state.isOpen, currentBook: state.currentBook }),
+    "AudioBookReader"
+  );
+
+  useEffect(
+    () => {
+      console.log('[AudioBookReader] calls useEffect');
+      
+      const handleKeyDown = (event: KeyboardEvent) => {
+        if (
+          event.target instanceof HTMLInputElement ||
+          event.target instanceof HTMLTextAreaElement
+        ) {
+          return;
+        }
+        // console.log('keydown', event);
+        
+        const action = KEYBOARD_SHORTCUTS[event.code as keyof typeof KEYBOARD_SHORTCUTS];
+        if (action) {
+          reader.handleShortcut(action);
+        }
+      };
+
+      window.addEventListener("keydown", handleKeyDown);
+  
+      return () => {
+        console.log('[AudioBookReader] useEffect cleanup');
+        window.removeEventListener("keydown", handleKeyDown);
+      };
+    }, []
+  );
+
 
   if (!isOpen || !currentBook) {
     return null;
@@ -32,7 +68,7 @@ export function AudioBookReader() {
           {/* AudioPlayer */}
           {hasAudioPlayer && (
             <AudioPlayer
-              className="flex-shrink-0 border-t mt-4 h-28"
+              className="flex-shrink-0 mt-4"
               showCloseButton={false}
             />
           )}
@@ -43,7 +79,7 @@ export function AudioBookReader() {
   } else if (hasAudioPlayer) {
     return (
       <AudioPlayer
-        className="fixed bottom-0 left-0 right-0 z-50 h-28"
+        className="fixed bottom-0 left-0 right-0 z-50"
         showCloseButton={true} // The player needs its own close button in this mode
       />
     );

@@ -1,5 +1,6 @@
 'use client';
 /**
+ * Deprecated
  * 供客户端组件全局共享的状态集合 (React Hook 写法)
  */
 import { create } from 'zustand';

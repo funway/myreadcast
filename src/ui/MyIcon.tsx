@@ -44,7 +44,20 @@ import {
 	LuArrowDownZA,
 	LuArrowDownAZ,
 	LuList,
-	LuChevronLeft
+	LuChevronLeft,
+	LuPause,
+	LuFastForward,
+	LuGauge,
+	LuListMusic,
+	LuRewind,
+	LuVolume2,
+	LuArrowBigRightDash,
+	LuArrowBigLeftDash,
+	LuVolume1,
+	LuVolumeOff,
+	LuVolume,
+	LuChevronsRight,
+	LuChevronsLeft
 } from "react-icons/lu";
 
 // 图标映射
@@ -70,7 +83,19 @@ const iconMap = {
 	microphone: LuMic,
 	headphone: LuHeadphones,
 	music: LuMusic4,
+
 	play: LuPlay,
+	pause: LuPause,
+	rewind: LuChevronsLeft,
+	forward: LuChevronsRight,
+	next: LuFastForward,
+	prev: LuRewind,
+	speed: LuGauge,
+	volume: LuVolume2,
+	volume0: LuVolume,
+	volume1: LuVolume1,
+	volume2: LuVolume2,
+	playlist: LuListMusic,
 
 	library: IoLibraryOutline,
 	libraryBuilding: HiOutlineBuildingLibrary,

@@ -13,8 +13,8 @@ import type { Library } from '@/lib/server/db/library';
  * - 也可以给一个 状态(`state`) 声明多种 状态修改函数(`setState`, `increaseState`, `clearState` 等)
  */
 export type ClientStates = { 
+  count: number;  // just for test
   sessionUser: SessionUser | null;
-  count: number; 
   libraries: Library[];
 }
 

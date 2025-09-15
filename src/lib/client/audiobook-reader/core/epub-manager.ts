@@ -29,18 +29,18 @@ export class EpubManager {
     try {
       this.destroy(); // Clean up previous book instance
       this.book = Epub(url);
-      console.log('Loading EPUB from:', url);
+      console.log('<EpubManager.load> Loading EPUB from:', url);
       
       await this.book.ready;
-      console.log('EPUB book loaded successfully.');
+      console.log('<EpubManager.load> EPUB book loaded successfully.');
       
       const N = 512;
       await this.book.locations.generate(N);
-      console.log('EPUB locations generated', this.book.locations);
+      console.log('<EpubManager.load> EPUB locations generated', this.book.locations);
 
       this.updateState({ toc: this.getToc() });
     } catch (error) {
-      console.error('Error loading EPUB:', error);
+      console.error('<EpubManager.load> Error loading EPUB:', error);
       this.updateState({ error: { message: 'Failed to load book.' } });
     }
   }
@@ -124,7 +124,7 @@ export class EpubManager {
   }
 
   public applySettings(settings: EpubViewSettings) {
-    console.log('EpubView apply settings:', settings);
+    console.log('<EpubManager.applySettings>:', settings);
     if (!this.rendition) return;
     
     // const themeColors = themeColorMap[settings.theme] || themeColorMap.light;

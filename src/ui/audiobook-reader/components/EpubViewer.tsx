@@ -2,10 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { NavItem } from 'epubjs';
-import { KEYBOARD_SHORTCUTS, reader } from '@/lib/client/audiobook-reader';
-import { useAudioBookReader } from '../hooks/useAudioBookReader';
+import { reader } from '@/lib/client/audiobook-reader';
+import { useReaderState } from '../hooks/useReaderState';
 import MyIcon from '@/ui/MyIcon';
-import ThemeSelector from '@/ui/ThemeSelector';
 
 const FONT_FAMILIES = [
   'serif',
@@ -15,7 +14,14 @@ const FONT_FAMILIES = [
 ];
 
 export function EpubViewer() {
-  const { currentBook, settings, toc } = useAudioBookReader();
+  console.log('[EpubViewer] rendering');
+  
+  const { currentBook, settings, toc } = useReaderState((state) => ({
+    currentBook: state.currentBook,
+    settings: state.settings.epubView,
+    toc: state.toc,
+  }), "EpubViewer");
+  
   const [openDrawer, setOpenDrawer] = useState<null | 'toc' | 'settings'>(null);
   const activeDrawerContent = useRef<null | 'toc' | 'settings'>(null);
   if (openDrawer !== null) {
@@ -31,29 +37,9 @@ export function EpubViewer() {
         reader.attachView(viewerElement);
       }
 
-      // setToc(reader.getToc());
-      console.log(toc);
-
-      // 2. setup key events
-      const handleKeyDown = (event: KeyboardEvent) => {
-        if (
-          event.target instanceof HTMLInputElement ||
-          event.target instanceof HTMLTextAreaElement
-        ) {
-          return;
-        }
-        
-        const action = KEYBOARD_SHORTCUTS[event.key as keyof typeof KEYBOARD_SHORTCUTS];
-        if (action) {
-          reader.handleShortcut(action);
-        }
-      };
-      window.addEventListener("keydown", handleKeyDown);
-  
       return () => {
         console.log('[EpubViewer] useEffect cleanup');
         reader.detachView();
-        window.removeEventListener("keydown", handleKeyDown);
       };
     }, []
   );
@@ -83,7 +69,7 @@ export function EpubViewer() {
         <span className="label-text">Font Family</span>
         <select
           className="select select-bordered w-full mt-2"
-          value={settings.epubView.fontFamily}
+          value={settings.fontFamily}
           onChange={(e) => reader.updateSettings({ epubView: { fontFamily: e.target.value } })}
         >
           {FONT_FAMILIES.map(font => (
@@ -96,13 +82,13 @@ export function EpubViewer() {
       <div>
         <div className="flex justify-between items-center">
           <span className="label-text">Font Size</span>
-          <span className="badge badge-ghost">{settings.epubView.fontSize}%</span>
+          <span className="badge badge-ghost">{settings.fontSize}%</span>
         </div>
         <input
           type="range"
           min="80"
           max="200"
-          value={settings.epubView.fontSize}
+          value={settings.fontSize}
           onChange={(e) => reader.updateSettings({ epubView: { fontSize: parseInt(e.target.value) } })}
           className="range range-primary mt-2"
         />
@@ -112,14 +98,14 @@ export function EpubViewer() {
       <div>
         <div className="flex justify-between items-center">
           <span className="label-text">Line Spacing</span>
-          <span className="badge badge-ghost">{settings.epubView.lineHeight}</span>
+          <span className="badge badge-ghost">{settings.lineHeight}</span>
         </div>
         <input
           type="range"
           min="1"
           max="2.5"
           step="0.1"
-          value={settings.epubView.lineHeight}
+          value={settings.lineHeight}
           onChange={(e) => reader.updateSettings({ epubView: { lineHeight: parseFloat(e.target.value) } })}
           className="range range-primary mt-2"
         />
@@ -136,13 +122,13 @@ export function EpubViewer() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setOpenDrawer('toc')}
-            className="btn btn-sm btn-ghost btn-square"
+            className="btn btn-ghost btn-square"
           >
             <MyIcon iconName="list" />
           </button>
           <button
             onClick={() => setOpenDrawer('settings')}
-            className="btn btn-sm btn-ghost btn-square"
+            className="btn btn-ghost btn-square"
           >
             <MyIcon iconName="setting" />
           </button>
@@ -161,7 +147,7 @@ export function EpubViewer() {
         {/* 右侧：关闭按钮 */}
         <div className="flex items-center justify-end">
           <button
-            className="btn btn-sm btn-circle btn-ghost"
+            className="btn btn-circle btn-ghost"
             onClick={() => reader.close()}
           >
             ✕
@@ -207,7 +193,7 @@ export function EpubViewer() {
         <div className="flex-shrink-0 flex items-center p-4 gap-2">
           <button
             onClick={() => setOpenDrawer(null)}
-            className="btn btn-sm btn-circle btn-ghost"
+            className="btn btn-circle btn-ghost"
           >
             <MyIcon iconName="arrowLeft"/>
           </button>
