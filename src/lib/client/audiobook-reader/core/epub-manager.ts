@@ -16,6 +16,8 @@ export class EpubManager {
    */
   private rendition: Rendition | null = null;
 
+  private locationsReady: boolean = false;
+
   /**
    * callback
    */
@@ -35,8 +37,12 @@ export class EpubManager {
       console.log('<EpubManager.load> EPUB book loaded successfully.');
       
       const N = 512;
-      await this.book.locations.generate(N);
-      console.log('<EpubManager.load> EPUB locations generated', this.book.locations);
+      this.book.locations.generate(N).then(() => { 
+        console.log('<EpubManager.load> EPUB locations generated', this.book!.locations);
+        this.locationsReady = true;
+        // Locations 对象不能直接被 JSON stringify，所以不能保存到 ReaderState 中
+      });
+      
 
       this.updateState({ toc: this.getToc() });
     } catch (error) {
@@ -83,6 +89,7 @@ export class EpubManager {
     }
     this.book = null;
     this.rendition = null;
+    this.locationsReady = false;
   }
 
   public getToc(): NavItem[] {

@@ -18,52 +18,64 @@ export class AudioManager {
     this.updateState = updateState;
   }
 
-  public load(
-    playlist: AudioTrack[],
-    initTrack?: number,
-    initOffset?: number,
-  ) {
+  public loadPlaylist(playlist: AudioTrack[]) {
     this.playlist = playlist.map((track, index) => ({
       ...track,
       title: track.title || track.src.split('/').pop() || `Track ${index + 1}`
     }));
     console.log('<AudioManager> load playlist:', this.playlist);
-
-    if (initTrack) {
-      this.loadTrack(initTrack, initOffset);
-    }
   }
 
-  private loadTrack(trackIndex: number, offset?: number) {
+  // public setTrack(trackIndex: number, offset?: number, play: boolean = false) {
+  public setTrack({ trackIndex, offset, play = false}: {
+    trackIndex: number,
+    offset?: number,
+    play?: boolean,
+  }) {
+    console.log('<AudioManager> setTrack:', {trackIndex, offset, play});
+    
+    const track = this.playlist[trackIndex];
+    if (!track) {
+      console.warn(`<AudioManager> Track index [${trackIndex}] not exist`);
+      return;
+    }
+
     if (this.sound) {
       this.sound.unload();
       this.sound = null;
     }
 
-    const track = this.playlist[trackIndex];
-    if (!track) {
-      console.warn(`Track index [${trackIndex}] not exist`);
-      return;
-    }
-
     this.currentTrackIndex = trackIndex;
-
+    this.updateState({
+      currentTrackIndex: trackIndex,
+      ...(offset !== undefined ? { currentTrackTime: offset } : {})
+    });
+    
     this.sound = new Howl({
       src: [track.src],
       html5: true,  // Force HTML5 Audio to enable streaming
       onload: () => {
-        console.log('<AudioManager> Track loaded');
-        // this.updateState({ duration: this.sound?.duration() });
+        console.log('<AudioManager> Track loaded', trackIndex);
+        this.updateState({currentTrackIndex: this.currentTrackIndex});
       },
       onplay: () => {
         console.log('<AudioManager> Track start playing');
+        // But this.sound.playing() does not immediately return true.
         this.sound?.rate(this.playbackRate);
         this.updateState({ isPlaying: true });
         this.startProgressTracking();
       },
       onpause: () => {
         console.log('<AudioManager> Track pause playing');
-        this.updateState({ isPlaying: false });
+        this.updateState({
+          isPlaying: false,
+          currentTrackTime: this.sound?.seek(),
+         });
+      },
+      onseek: () => { 
+        const seek = this.sound?.seek();
+        console.log('<AudioManager> Track seek', seek);
+        this.updateState({ currentTrackTime: seek});
       },
       onend: () => {
         console.log('<AudioManager> Track end');
@@ -71,53 +83,59 @@ export class AudioManager {
         if (this.continuousPlay && (this.currentTrackIndex < this.playlist.length - 1)) {
           this.next();
         } else {
-          this.updateState({isPlaying: false});
+          this.updateState({ isPlaying: false });
+          this.stopProgressTracking();
         }
       },
     });
 
-    if (offset) {
+    if (offset !== undefined) {
       this.sound.once('play', () => {
         this.seek(offset);
       });
     }
+
+    if (play) {
+      this.play();
+    }
   }
 
+  /**
+   * Set and play track
+   * @param trackIndex 
+   * @param offset 
+   */
   public playTrack(trackIndex: number, offset?: number) {
-    this.loadTrack(trackIndex, offset);
-    
-    if (!this.sound) return;
-    
-    this.play();
-    this.updateState({ currentTrackIndex: trackIndex, currentTrackTime: offset ?? 0 });
+    this.setTrack({ trackIndex, offset, play: true});
   }
 
-  public seekToTrack(trackIndex: number, offset?: number) {
-    this.loadTrack(trackIndex, offset);
+  /**
+   * Set and pause track
+   * @param trackIndex 
+   * @param offset 
+   */
+  public cueTrack(trackIndex: number, offset?: number) {
+    this.setTrack({ trackIndex, offset, play: false});
   }
 
-  private startProgressTracking(immediate: boolean = true) {
+  private startProgressTracking(delay: number = 100) {
     this.stopProgressTracking();
+    console.log(`<AudioManager> startProgressTracking. delay ${delay}ms`);
     
     const step = () => { 
+      console.log('<AudioManager> startProgressTracking.step');
+      this.updateState({
+        currentTrackIndex: this.currentTrackIndex,
+        currentTrackTime: this.sound?.seek(),
+      });
       if (this.sound?.playing()) {
-        const seek = this.sound.seek() || 0;
-        this.updateState({
-          currentTrackIndex: this.currentTrackIndex,
-          currentTrackTime: seek
-        });
-
         this.progressTracking = window.setTimeout(step, PROGRESS_TRACKING_INTERVAL);
       } else {
         this.progressTracking = null;
       }
     };
-
-    if (immediate) {
-      step();   // 立即执行第一次
-    } else {    // 延迟执行
-      this.progressTracking = window.setTimeout(step, PROGRESS_TRACKING_INTERVAL); 
-    }
+    
+    this.progressTracking = window.setTimeout(step, delay); 
   }
 
   private stopProgressTracking() {
@@ -140,27 +158,35 @@ export class AudioManager {
 
   public togglePlay() {
     if (this.sound) {
-        if (this.sound.playing()) {
-            this.pause();
-        } else {
-            this.play();
-        }
+      if (this.sound.playing()) {
+        this.pause();
+      } else {
+        this.play();
+      }
     } else if (this.playlist.length > 0) {
-        this.playTrack(this.currentTrackIndex);
+      this.playTrack(this.currentTrackIndex);
     } else {
       console.warn('<AudioManager.togglePlay> playlist is empty');
     }
   }
 
-  public next() {
+  public next(autoPlay: boolean = true) {
     if (this.currentTrackIndex < this.playlist.length - 1) {
-      this.playTrack(this.currentTrackIndex + 1);
+      this.setTrack({
+        trackIndex: this.currentTrackIndex + 1,
+        offset: 0,
+        play: autoPlay,
+      });
     }
   }
 
-  public prev() {
+  public prev(autoPlay: boolean = true) {
     if (this.currentTrackIndex > 0) {
-      this.playTrack(this.currentTrackIndex - 1);
+      this.setTrack({
+        trackIndex: this.currentTrackIndex - 1,
+        offset: 0,
+        play: autoPlay,
+      });
     } else {
       this.seek(0);
     }
@@ -189,7 +215,7 @@ export class AudioManager {
   }
 
   public getCurrentSeek() {
-    return this.sound?.seek() ?? 0;
+    return this.sound?.seek();
   }
 
   /**
@@ -220,6 +246,7 @@ export class AudioManager {
   public destroy() {
     if (this.sound) {
       this.sound.unload();
+      this.sound = null;
     }
     this.playlist = [];
     this.currentTrackIndex = 0;

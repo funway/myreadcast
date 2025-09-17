@@ -14,8 +14,6 @@ const FONT_FAMILIES = [
 ];
 
 export function EpubViewer() {
-  console.log('[EpubViewer] rendering');
-  
   const { currentBook, settings, toc } = useReaderState((state) => ({
     currentBook: state.currentBook,
     settings: state.settings.epubView,
@@ -28,6 +26,8 @@ export function EpubViewer() {
     activeDrawerContent.current = openDrawer;
   }
   const viewerRef = useRef<HTMLDivElement>(null);
+
+  console.log('[EpubViewer] rendering', { currentBook, toc });
 
   useEffect(
     () => {
@@ -49,18 +49,28 @@ export function EpubViewer() {
     setOpenDrawer(null);
   };
 
-  const renderToc = (items: NavItem[]) => (
-    <ul className="menu p-4 w-full text-base-content">
-      {items.map((item) => (
-        <li key={item.id}>
-          <a onClick={() => handleTocClick(item.href)}>{item.label}</a>
-          {item.subitems && item.subitems.length > 0 && (
-            <ul>{renderToc(item.subitems)}</ul>
-          )}
-        </li>
-      ))}
-    </ul>
-  );
+  const renderToc = (toc?: NavItem[]) => { 
+    if (toc === undefined) {
+      return (
+        <div className="flex justify-center p-4 text-base-content">
+          <span className="loading loading-dots loading-md"></span>
+        </div>
+      );
+    }
+
+    return (
+      <ul className="menu w-full p-4 text-base-content">
+        {toc.map((item) => (
+          <li key={item.id}>
+            <a onClick={() => handleTocClick(item.href)}>{item.label}</a>
+            {item.subitems && item.subitems.length > 0 && (
+              <ul>{renderToc(item.subitems)}</ul>
+            )}
+          </li>
+        ))}
+      </ul>
+    );
+  };
 
   const renderSettings = () => (
     <div className="p-4 space-y-6">
@@ -119,7 +129,7 @@ export function EpubViewer() {
       {/* Top Navigation */}
       <div className="flex flex-shrink-0 items-center justify-between p-4">
         {/* 左侧：按钮 */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-1/5">
           <button
             onClick={() => setOpenDrawer('toc')}
             className="btn btn-ghost btn-square"
@@ -145,7 +155,7 @@ export function EpubViewer() {
         </div>
 
         {/* 右侧：关闭按钮 */}
-        <div className="flex items-center justify-end">
+        <div className="flex items-center justify-end w-1/5">
           <button
             className="btn btn-circle btn-ghost"
             onClick={() => reader.close()}

@@ -14,7 +14,7 @@ import { EpubManager } from './epub-manager';
 import { AudioManager } from './audio-manager';
 
 const SETTINGS_KEY = 'myreadcast-reader-settings';
-const defaultSettings: ReaderSettings = {
+const DEFAULT_READER_SETTINGS: ReaderSettings = {
   epubView: {
     fontFamily: 'sans-serif',
     fontSize: 100,
@@ -29,19 +29,23 @@ const defaultSettings: ReaderSettings = {
 };
 
 const loadReaderSettings = (): ReaderSettings => {
+  if (typeof window === 'undefined') {
+    return DEFAULT_READER_SETTINGS;
+  }
+
   try {
     const stored = localStorage.getItem(SETTINGS_KEY);
     if (stored) {
       const parsed = JSON.parse(stored);
       return {
-        epubView: { ...defaultSettings.epubView, ...(parsed.epubView || {}) },
-        audioPlay: { ...defaultSettings.audioPlay, ...(parsed.audioPlay || {}) },
+        epubView: { ...DEFAULT_READER_SETTINGS.epubView, ...(parsed.epubView || {}) },
+        audioPlay: { ...DEFAULT_READER_SETTINGS.audioPlay, ...(parsed.audioPlay || {}) },
       }
     }
   } catch (error) {
     console.error('Failed to load reader settings:', error);
   }
-  return defaultSettings;
+  return DEFAULT_READER_SETTINGS;
 };
 
 const saveReaderSettings = (settings: ReaderSettings) => {
@@ -62,8 +66,8 @@ class AudioBookReader {
 
   private constructor() {
     this.state = this.getInitialState();
-    this.epubManager = new EpubManager(this.setState.bind(this));
-    this.audioManager = new AudioManager(this.setState.bind(this));
+    this.epubManager = new EpubManager(this.updateState.bind(this));
+    this.audioManager = new AudioManager(this.updateState.bind(this));
   }
 
   private getInitialState(): ReaderState {
@@ -73,7 +77,6 @@ class AudioBookReader {
       settings: loadReaderSettings(),
       
       currentBook: null,
-      toc: [],
       // currentCfi?: string;              // 当前的 EPUB CFI (阅读进度)
       // currentTrack?: number;            // 当前选中的 track idx
       // currentTrackTime?: number;        // 当前 track 播放的时间点 (播放进度)
@@ -97,24 +100,43 @@ class AudioBookReader {
   }
 
   /**
-   * Merge the given partial state into the current {@link ReaderState}.  
+   * Set a new {@link ReaderState} if it is actually different with the current.   
    * If the state changes, update it and emit a `"state-changed"` event.
    *
-   * @param newState - Partial state update
+   * @param newState - new ReaderState object
    * @emits `state-changed` - Emitted only when the state has actually changed
    */
-  private setState(newState: Partial<ReaderState>) {
-    const updatedState = { ...this.state, ...newState };
-    
-    // TODO - 使用 JSON.stringfy 并不是一个很好的对象比较的方案
-    if (JSON.stringify(this.state) !== JSON.stringify(updatedState)) {
-      this.state = updatedState;
+  private setState(newState: ReaderState) {
+    // TODO - 使用 JSON.stringfy 并不是一个高效的对象比较方案
+    if (JSON.stringify(this.state) !== JSON.stringify(newState)) {
+      this.state = newState;
       this.emit('state-changed', this.state);
       console.log("<reader> setState, state-changed (emit)", newState);
     } else {
       console.log("<reader> setState, no-changed");
     }
   }
+
+  /**
+   * Merge the given partial state into the current {@link ReaderState}.  
+   * If the state changes, update it and emit a `"state-changed"` event.
+   *
+   * @param updates - Partial state update
+   * @emits `state-changed` - Emitted only when the state has actually changed
+   */
+  private updateState(updates: Partial<ReaderState>) {
+    const updatedState = { ...this.state, ...updates };
+    
+    // TODO - 使用 JSON.stringfy 并不是一个高效的对象比较方案
+    if (JSON.stringify(this.state) !== JSON.stringify(updatedState)) {
+      this.state = updatedState;
+      this.emit('state-changed', this.state);
+      console.log("<reader> updateState, state-changed (emit)", updates);
+    } else {
+      console.log("<reader> updateState, no-changed");
+    }
+  }
+  
 
   public async open(bookConfig: BookConfig) {
     console.log('<reader> Opening book:', bookConfig.title || bookConfig.path);
@@ -123,7 +145,7 @@ class AudioBookReader {
     this.close();
     
     // 2. Load new book
-    this.setState({
+    this.updateState({
       isOpen: true,
       currentBook: bookConfig,
     });
@@ -132,9 +154,23 @@ class AudioBookReader {
       await this.epubManager.load(bookConfig.path);
     }
     if (bookConfig.type === 'audios' || bookConfig.type === 'audible_epub') {
-      if (bookConfig.playlist && bookConfig.playlist.length > 0) {
-        this.audioManager.load(bookConfig.playlist);
+      if (bookConfig.playlist) {
+        const playlist = bookConfig.playlist;
+        const trackPositions: Array<{ startTime: number; endTime: number, trackIndex: number }> = [];
+        let totalDuration = 0;
+        playlist.forEach((track, index) => {
+          const startTime = totalDuration;
+          const endTime = startTime + (track.duration || 0);
+          trackPositions.push({ startTime, endTime, trackIndex: index });
+          totalDuration = endTime;
+        });
+
+        this.updateState({ trackPositions: trackPositions });
+
+        this.audioManager.loadPlaylist(bookConfig.playlist);
         this.audioManager.applySettings(this.state.settings.audioPlay);
+      } else {
+        console.warn(`<AudiobookReader> book [${bookConfig.path}] playlist undefined!`);
       }
     }
 
@@ -160,20 +196,20 @@ class AudioBookReader {
   }
 
   public nextTrack() {
-    this.audioManager.next();
+    this.audioManager.next(this.state.isPlaying);
   }
 
   public prevTrack() {
-    this.audioManager.prev();
+    this.audioManager.prev(this.state.isPlaying);
   }
 
   public togglePlay() {
     this.audioManager.togglePlay();
   }
 
-  public getToc() {
-    return this.epubManager.getToc();
-  }
+  // public getToc() {
+  //   return this.epubManager.getToc();
+  // }
 
   /**
    * Get current trak's playback time lively
@@ -187,12 +223,64 @@ class AudioBookReader {
     this.epubManager.goToHref(href);
   }
 
+  /**
+   * 根据全局时间偏移量跳转到对应的轨道和位置
+   * @param globalOffset 全局时间轴上的位置（秒）
+   */
+  public seekTo(globalOffset: number) {
+    const trackPositions = this.state.trackPositions;
+    if (trackPositions === undefined) {
+      console.warn('<AudioBookReader.seekTo> trackPositions undefined');
+      return;
+    }
+
+    // 确保偏移量的范围
+    const totalDuration = trackPositions.length ? trackPositions[trackPositions.length - 1].endTime : 0;
+    const targetTime = Math.min(Math.max(0, globalOffset), totalDuration);
+    console.log(`<AudioBookReader.seekTo> globalOffset: ${globalOffset} (${targetTime})`);
+    
+    const targetTrack = trackPositions?.find(p => targetTime >= p.startTime && targetTime <= p.endTime);
+    if (targetTrack) {
+      const trackTime = targetTime - targetTrack.startTime;
+      this.setTrack({
+        trackIndex: targetTrack.trackIndex,
+        offset: trackTime,
+        play: this.state.isPlaying,
+      });
+    } else {
+      console.warn('<AudioBookReader.seekTo> Cannot find the target track');
+      return;
+    }
+  }
+
+  private getCurrentGlobalOffset(): number {
+    const currentTrack = this.state.trackPositions?.find(
+      track => track.trackIndex === this.state.currentTrackIndex
+    );
+    
+    if (!currentTrack) {
+      return 0;
+    }
+    
+    const currentTrackTime = this.state.currentTrackTime ?? 0;
+    return currentTrack.startTime + currentTrackTime;
+  }
+  
   public rewind(seconds: number = 10) {
-    this.audioManager.rewind(seconds);
+    // this.audioManager.rewind(seconds);
+    const currentGlobalOffset = this.getCurrentGlobalOffset();
+    const targetOffset = currentGlobalOffset - seconds;
+    
+    console.log(`<Rewind> ${currentGlobalOffset}s -> ${targetOffset}s (${seconds}s back)`);
+    this.seekTo(targetOffset);
   }
 
   public forward(seconds: number = 10) {
-    this.audioManager.forward(seconds);
+    const currentGlobalOffset = this.getCurrentGlobalOffset();
+    const targetOffset = currentGlobalOffset + seconds;
+    
+    console.log(`<Forward> ${currentGlobalOffset}s -> ${targetOffset}s (${seconds}s forward)`);
+    this.seekTo(targetOffset);
   }
   
   public setPlaybackRate(rate: number) {
@@ -211,12 +299,12 @@ class AudioBookReader {
     this.updateSettings({ audioPlay: { volume: clamped } })
   }
 
-  public playTrack(index: number, offset?: number) {
-    this.audioManager.playTrack(index, offset);
-  }
-  
-  public seekToTrack(trackIndex: number, offset: number) {
-    this.audioManager.seekToTrack(trackIndex, offset);
+  public setTrack({ trackIndex, offset, play = false}: {
+    trackIndex: number,
+    offset?: number,
+    play?: boolean,
+  }) {
+    this.audioManager.setTrack({ trackIndex, offset, play });
   }
 
   public attachView(element: HTMLElement) {
@@ -271,7 +359,7 @@ class AudioBookReader {
       this.audioManager.applySettings(newSettings.audioPlay);
     }
 
-    this.setState({ settings: newSettings });
+    this.updateState({ settings: newSettings });
   }
 
   // --- Public Event Subscription Methods ---

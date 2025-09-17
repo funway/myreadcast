@@ -27,11 +27,11 @@ export function useReaderState<T = ReaderState>(
 
   const subscribe = (onStoreChange: () => void) => {
     reader.on('state-changed', onStoreChange);
-    console.log(`<useReaderState> subscribe state-changed event by ${debugLabel ?? 'unknown'}`);
+    // console.log(`<useReaderState> subscribe state-changed event by ${debugLabel ?? 'unknown'}`);
     
     return () => {
       reader.off('state-changed', onStoreChange);
-      console.log(`<useReaderState> subscribe cleanup (unsubscribe state-changed event) by ${debugLabel ?? 'unknown'}`);
+      // console.log(`<useReaderState> subscribe cleanup (unsubscribe state-changed event) by ${debugLabel ?? 'unknown'}`);
     }
   };
 

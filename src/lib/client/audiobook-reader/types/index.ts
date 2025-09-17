@@ -17,6 +17,12 @@ export interface BookConfig {
   coverPath?: string;
 }
 
+export interface TrackPositions { 
+  trackIndex: number,
+  startTime: number,
+  endTime: number,
+}
+
 // export interface ReadingProgress {
 //   bookPath: string;
 //   epubCfi?: string;   // EPUB的位置标识
@@ -37,18 +43,18 @@ export interface BookConfig {
 // }
 
 // SMIL 同步数据结构
-export interface SmilSegment {
-  id: string;
-  textSrc: string; // 对应的 HTML 元素 ID
-  audioSrc: string;
-  clipBegin: number; // 秒数
-  clipEnd: number;   // 秒数
-}
+// export interface SmilSegment {
+//   id: string;
+//   textSrc: string; // 对应的 HTML 元素 ID
+//   audioSrc: string;
+//   clipBegin: number; // 秒数
+//   clipEnd: number;   // 秒数
+// }
 
-export interface SmilData {
-  segments: SmilSegment[];
-  audioFiles: string[]; // 所有音频文件列表
-}
+// export interface SmilData {
+//   segments: SmilSegment[];
+//   audioFiles: string[]; // 所有音频文件列表
+// }
 
 export const KEYBOARD_SHORTCUTS = {
   'ArrowLeft': 'prevPage',
@@ -85,10 +91,11 @@ export interface ReaderState {
   settings: ReaderSettings;         // AudioBookReader UI 组件的设置
   
   currentBook: BookConfig | null;   // 书籍信息
-  toc: NavItem[];                   // EPUB 目录
+  toc?: NavItem[];                  // EPUB 目录
   currentCfi?: string;              // 当前的 EPUB CFI (阅读进度)
   currentTrackIndex?: number;       // 当前选中的 track idx
   currentTrackTime?: number;        // 当前 track 播放的时间点 (播放进度)
+  trackPositions?: TrackPositions[]; // playlist 中每个 track 的全局开始结束时间
   
   // duration?: number;                // book.playlist 中应该有的
   // totalDuration?: number;           // book.playlist 中自己计算

@@ -11,8 +11,6 @@ import { KEYBOARD_SHORTCUTS, reader } from '@/lib/client/audiobook-reader';
  * It acts as a frame, rendering either the EPUB modal or the audio-only bar.
  */
 export function AudioBookReader() {
-  console.log('[AudioBookReader] rendering');
-  // const { isOpen, currentBook } = useReaderState();
   const { isOpen, currentBook } = useReaderState(
     (state) => ({ isOpen: state.isOpen, currentBook: state.currentBook }),
     "AudioBookReader"
@@ -46,6 +44,7 @@ export function AudioBookReader() {
     }, []
   );
 
+  console.log('[AudioBookReader] rendering', {isOpen, currentBook});
 
   if (!isOpen || !currentBook) {
     return null;

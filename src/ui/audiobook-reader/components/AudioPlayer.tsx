@@ -13,14 +13,11 @@ type AudioPlayerProps = {
 };
 
 export const AudioPlayer = memo(({ className, showCloseButton = false }: AudioPlayerProps) => {
-    console.log("[AudioPlayer] rendering");
-
     const { isPlaying, currentBook, currentTrackIndex, settings } = useReaderState(
         (s) => ({
             isPlaying: s.isPlaying,
             currentBook: s.currentBook,
             currentTrackIndex: s.currentTrackIndex,
-            currentTrackTime: s.currentTrackTime,
             settings: s.settings.audioPlay,
         }),
         "AudioPalyer"
@@ -62,9 +59,15 @@ export const AudioPlayer = memo(({ className, showCloseButton = false }: AudioPl
         };
     }, [currentBook]);
 
-    console.log("[AudioPlayer] got:", {currentBook, currentTrackIndex, settings, playlist});
+    console.log("[AudioPlayer] rendering", {
+        isPlaying,
+        currentBook,
+        currentTrackIndex,
+        settings,
+        playlist
+    });
     
-    const currentTrackData = playlist?.[currentTrackIndex ?? 0];
+    const currentTrackData = playlist[currentTrackIndex ?? 0];
     const trackTitle = currentTrackData?.title ?? '...';
 
     return (
@@ -155,7 +158,11 @@ export const AudioPlayer = memo(({ className, showCloseButton = false }: AudioPl
                             p-2 shadow max-h-64 overflow-y-auto w-max max-w-96">
                             {playlist?.map((track, index) => (
                                 <li key={index}>
-                                    <a onClick={() => reader.playTrack(index)}
+                                    <a onClick={() => reader.setTrack({
+                                        trackIndex: index,
+                                        offset: 0,
+                                        play: isPlaying,
+                                    })}
                                         className={index === currentTrackIndex ? 'active bg-primary text-primary-content' : ''}>
                                         {track.title} ({formatTime(track.duration)})
                                     </a>

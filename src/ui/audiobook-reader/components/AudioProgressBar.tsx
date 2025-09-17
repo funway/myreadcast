@@ -12,18 +12,17 @@ import { useReaderState } from '../hooks/useReaderState';
 import { formatTime } from '@/lib/client/utils';
 
 export const AudioProgressBar = memo(() => {
-  console.log("[AudioProgressBar] rendering");
-
-  const { isPlaying, currentBook, currentTrackIndex } = useReaderState((s) => ({
+  const { isPlaying, currentBook, currentTrackIndex, currentTrackTime, trackPositions} = useReaderState((s) => ({
     isPlaying: s.isPlaying,
     currentBook: s.currentBook,
     currentTrackIndex: s.currentTrackIndex,
     currentTrackTime: s.currentTrackTime,
+    trackPositions: s.trackPositions,
   }), "AudioProgressBar");
 
-  const { playlist, trackPositions, totalDuration } = useMemo(() => {
+  const { playlist, totalDuration } = useMemo(() => {
     if (!currentBook?.playlist) {
-      return { playlist: [], trackPositions: [], totalDuration: 0 };
+      return { playlist: [], totalDuration: 0 };
     }
 
     const playlist = currentBook.playlist.map((track, index) => ({
@@ -31,27 +30,14 @@ export const AudioProgressBar = memo(() => {
       title: track.title || track.src.split('/').pop() || `Track ${index + 1
         }`
     }));
-    const trackPositions: Array<{ startTime: number; endTime: number, trackIndex: number }> = [];
+    
     let totalDuration = 0;
+    if (trackPositions && trackPositions.length > 1) {
+      totalDuration = trackPositions[trackPositions.length - 1].endTime;
+    }
 
-    // 计算每个 track 的时间位置
-    playlist.forEach((track, index) => {
-      const startTime = totalDuration;
-      const endTime = startTime + (track.duration || 0);
-      trackPositions.push({ startTime, endTime, trackIndex: index });
-
-      totalDuration = endTime;
-    });
-
-    return { playlist, trackPositions, totalDuration };
-  }, [currentBook]);
-
-  console.log("[AudioProgressBar] got:", {
-    currentBook,
-    currentTrackIndex,
-    playlist,
-    trackPositions
-  });
+    return { playlist, totalDuration };
+  }, [currentBook, trackPositions]);
 
   const [tooltip, setTooltip] = useState<{
     visible: boolean;
@@ -59,10 +45,20 @@ export const AudioProgressBar = memo(() => {
     text: string
   }>({ visible: false, left: 0, text: '' });
   const [hoverPosition, setHoverPosition] = useState<number | null>(null);
-  const [isHovering, setIsHovering] = useState(false);
   const [totalCurrentTime, setTotalCurrentTime] = useState(0);
-
   const progressBarRef = useRef<HTMLDivElement>(null);
+  const progressPercent = totalDuration ? (totalCurrentTime / totalDuration) * 100 : 0;
+  
+  console.log("[AudioProgressBar] rendering", {
+    isPlaying,
+    playlist,
+    trackPositions,
+    currentTrackIndex,
+    currentTrackTime,
+    totalCurrentTime,
+    totalDuration,
+    progressPercent,
+  });
 
   const handleSeek = (event: React.MouseEvent<HTMLDivElement>) => {
     if (!progressBarRef.current || !totalDuration)
@@ -72,105 +68,90 @@ export const AudioProgressBar = memo(() => {
     const clickX = event.clientX - rect.left;
     const percentage = Math.max(0, Math.min(1, clickX / rect.width));
     const targetTime = percentage * totalDuration;
-
-    // 找到目标时间对应的 track 和位置
-    const targetTrack = trackPositions.find(p => targetTime >= p.startTime && targetTime < p.endTime);
-    if (targetTrack) {
-      const trackTime = targetTime - targetTrack.startTime;
-      console.log("[AudioProgressBar] handleSeek:", percentage, "targetTrack", targetTrack, "targetTime:", targetTime);
-      reader.seekToTrack(targetTrack.trackIndex, trackTime);
-    } else {
-      console.error("[AudioProgressBar] handleSeek. find targetTrack failed!");
-    }
+    
+    reader.seekTo(targetTime);
+    setTotalCurrentTime(targetTime);
   };
 
   const handleMouseMove = (event: React.MouseEvent<HTMLDivElement>) => {
-    if (!progressBarRef.current || !totalDuration)
+    if (!progressBarRef.current || !totalDuration || !trackPositions)
       return;
-
 
     const rect = progressBarRef.current.getBoundingClientRect();
     const hoverX = event.clientX - rect.left;
     const percentage = Math.max(0, Math.min(1, hoverX / rect.width));
     const hoverTime = percentage * totalDuration;
 
-    // 设置 hover 位置（用于显示竖线）
     setHoverPosition(percentage);
 
     const targetTrack = trackPositions.find(p => hoverTime >= p.startTime && hoverTime < p.endTime);
-    const trackTitle = targetTrack ? playlist[targetTrack.trackIndex]?.title : '??';
+    const trackTitle = targetTrack ? playlist[targetTrack.trackIndex].title : '??';
 
     setTooltip({
-      visible: true, left: hoverX, text: `${trackTitle} - ${formatTime(hoverTime)
-        }`
+      visible: true,
+      left: hoverX,
+      text: `${trackTitle} - ${formatTime(hoverTime)}`
     });
-  };
-
-  const handleMouseEnter = () => {
-    setIsHovering(true);
   };
 
   const handleMouseLeave = () => {
-    setTooltip({
-      ...tooltip,
-      visible: false
-    });
+    setTooltip(prev => ({ ...prev, visible: false }));
     setHoverPosition(null);
-    setIsHovering(false);
   };
 
   useEffect(() => {
+    if (trackPositions === undefined || trackPositions.length === 0) {
+      return;
+    }
+
     let animationFrameId: number;
-
-    if (isPlaying) {
-      const trackingProgress = () => {
-        const currentTrackPosition = trackPositions[currentTrackIndex ?? 0];
-        if (currentTrackPosition) {
-          const baseTime = currentTrackPosition.startTime;
-          setTotalCurrentTime(baseTime + reader.getCurrentSeek());
-        }
-        animationFrameId = requestAnimationFrame(trackingProgress);
-      };
-
+    const currentTrackPosition = trackPositions[currentTrackIndex ?? 0];
+    const baseTime = currentTrackPosition.startTime;
+    
+    const trackingProgress = () => {
+      const seek = reader.getCurrentSeek();
+      if (currentTrackPosition && seek) {
+        setTotalCurrentTime(baseTime + seek);
+      }
       animationFrameId = requestAnimationFrame(trackingProgress);
-    } else { // nothing
+    };
+    
+    if (isPlaying) {
+      animationFrameId = requestAnimationFrame(trackingProgress);
+    } else {
+      setTotalCurrentTime(baseTime + (currentTrackTime ?? 0));
     }
 
     return () => {
       console.log("[AudioProgressBar] useEffect cleanup");
       cancelAnimationFrame(animationFrameId);
     }
-  }, [isPlaying, currentTrackIndex]);
-
-  const currentTrackData = playlist?.[currentTrackIndex ?? 0];
-  const trackTitle = currentTrackData?.title ?? '...';
-  const progressPercent = totalDuration ? (totalCurrentTime / totalDuration) * 100 : 0;
+  }, [isPlaying, currentTrackIndex, currentTrackTime, trackPositions]);
 
   return (
     <div className="w-full">
-      <div className="h-2.5 flex items-center">
+      <div className="h-3 flex items-center">
+        {/* 进度条 */}
         <div
           ref={progressBarRef}
-          className={`w-full cursor-pointer relative rounded-full bg-base-300 
-            transition-all duration-300 ${isHovering ? 'h-2.5' : 'h-2'}`}
+          className="w-full cursor-pointer relative rounded-full bg-base-300 
+          transition-[height] duration-200 h-2 hover:h-3"
           onClick={handleSeek}
           onMouseMove={handleMouseMove}
-          onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}>
-          {/* 主进度条 */}
-          <div
-            className="h-full bg-primary rounded-full transition-all duration-100"
+          {/* 进度条前景 */}
+          <div className="h-full bg-primary rounded-full"
             style={{ width: `${Math.max(0, Math.min(100, progressPercent))}%` }}
           />
 
           {/* Track 分隔线 */}
-          {trackPositions.map((pos, index) => {
+          {trackPositions?.map((pos, index) => {
             if (index === 0) return null;
             const left = (pos.startTime / (totalDuration || 1)) * 100;
             return (
               <div
                 key={index}
-                className="absolute top-0 h-full w-0.5 bg-base-100 opacity-60"
+                className="absolute top-0 h-full w-0.5 bg-base-100 opacity-80"
                 style={{ left: `${left}%` }}
               />
             );
@@ -183,13 +164,6 @@ export const AudioProgressBar = memo(() => {
               style={{ left: `${hoverPosition * 100}%` }}
             />
           )}
-
-          {/* 播放位置指示器 */}
-          <div
-            className={`absolute top-1/2 transform -translate-y-1/2 -translate-x-1/2 pointer-events-none transition-all duration-200 ${isHovering ? 'w-4 h-4' : 'w-3 h-3'
-              } bg-primary border-2 border-primary-content rounded-full shadow-sm`}
-            style={{ left: `${Math.max(0, Math.min(100, progressPercent))}%` }}
-          />
 
           {/* Tooltip */}
           {tooltip.visible && (
@@ -206,13 +180,23 @@ export const AudioProgressBar = memo(() => {
       </div>
 
       {/* 时间信息 */}
-      <div className="flex justify-between text-xs font-mono mt-1 px-1 opacity-70">
-        <span>{formatTime(totalCurrentTime)}</span>
-        <span className="text-center flex-1">
-          {Math.round(progressPercent)}% • Track {(currentTrackIndex ?? 0) + 1}/{playlist.length}
+      <div className="grid grid-cols-3 text-xs font-mono mt-1 px-1 opacity-70">
+        {/* 左边 */}
+        <span className="text-left">
+          {formatTime(totalCurrentTime)} / {Math.round(progressPercent)}%
         </span>
-        <span>{formatTime(totalDuration)}</span>
+
+        {/* 中间 */}
+        <span className="text-center">
+          {playlist[currentTrackIndex ?? 0]?.title}
+        </span>
+
+        {/* 右边 */}
+        <span className="text-right">
+          {formatTime(totalDuration)}
+        </span>
       </div>
+
     </div>
   );
 });
