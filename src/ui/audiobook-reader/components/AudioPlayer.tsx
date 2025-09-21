@@ -1,6 +1,6 @@
 'use client';
 
-import React, { memo, useMemo } from 'react';
+import React, { memo, useEffect, useMemo } from 'react';
 import { reader } from '@/lib/client/audiobook-reader';
 import { useReaderState } from '../hooks/useReaderState';
 import { formatTime } from '@/lib/client/utils';
@@ -13,63 +13,29 @@ type AudioPlayerProps = {
 };
 
 export const AudioPlayer = memo(({ className, showCloseButton = false }: AudioPlayerProps) => {
-    const { isPlaying, currentBook, currentTrackIndex, settings } = useReaderState(
+    const { isPlaying, currentBook, currentTrackIndex, totalDuration, settings } = useReaderState(
         (s) => ({
             isPlaying: s.isPlaying,
             currentBook: s.currentBook,
             currentTrackIndex: s.currentTrackIndex,
+            totalDuration: s.totalDuration,
             settings: s.settings.audioPlay,
         }),
         "AudioPalyer"
     );
+    const playlist = currentBook?.playlist ?? [];
+    const currentTrackData = playlist[currentTrackIndex ?? 0];
+    const trackTitle = currentTrackData?.title ?? `Track ${currentTrackIndex}`;
     
-    const { playlist, totalDuration } = useMemo(() => {
-        if (!currentBook?.playlist) {
-            return {
-                playlist: [],
-                trackPositions: [],
-                totalDuration: 0
-            };
-        }
-
-        const playlist = currentBook.playlist.map((track, index) => ({
-            ...track,
-            title: track.title || track.src.split('/').pop() || `Track ${index + 1}`
-        }));
-        const trackPositions: Array<{ startTime: number; endTime: number, trackIndex: number }> = [];
-        let totalDuration = 0;
-
-        // 计算每个 track 的时间位置
-        playlist.forEach((track, index) => {
-            const startTime = totalDuration;
-            const endTime = startTime + (track.duration || 0);
-            trackPositions.push({
-                startTime,
-                endTime,
-                trackIndex: index,
-            });
-
-            totalDuration = endTime;
-        });
-
-        return {
-            playlist,
-            trackPositions,
-            totalDuration
-        };
-    }, [currentBook]);
-
     console.log("[AudioPlayer] rendering", {
         isPlaying,
         currentBook,
         currentTrackIndex,
+        playlist,
+        totalDuration,
         settings,
-        playlist
     });
     
-    const currentTrackData = playlist[currentTrackIndex ?? 0];
-    const trackTitle = currentTrackData?.title ?? '...';
-
     return (
         <div className={`flex flex-col bg-base-200 p-4 gap-2 ${className}`}>
             {/* Row 1: Controls */}
@@ -178,3 +144,5 @@ export const AudioPlayer = memo(({ className, showCloseButton = false }: AudioPl
         </div>
     );
 });
+
+AudioPlayer.displayName = 'AudioPlayer';

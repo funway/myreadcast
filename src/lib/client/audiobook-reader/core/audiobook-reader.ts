@@ -9,9 +9,11 @@ import {
   ReaderSettings,
   AudioPlaySettings,
   EpubViewSettings,
+  TrackPosition,
 } from '../types';
 import { EpubManager } from './epub-manager';
 import { AudioManager } from './audio-manager';
+import { SmilManager } from './smil-manager';
 
 const SETTINGS_KEY = 'myreadcast-reader-settings';
 const DEFAULT_READER_SETTINGS: ReaderSettings = {
@@ -63,11 +65,13 @@ class AudioBookReader {
 
   private epubManager: EpubManager;
   private audioManager: AudioManager;
+  private smilManager: SmilManager;
 
   private constructor() {
     this.state = this.getInitialState();
     this.epubManager = new EpubManager(this.updateState.bind(this));
     this.audioManager = new AudioManager(this.updateState.bind(this));
+    this.smilManager = new SmilManager(this.updateState.bind(this));
   }
 
   private getInitialState(): ReaderState {
@@ -145,19 +149,17 @@ class AudioBookReader {
     this.close();
     
     // 2. Load new book
-    this.updateState({
-      isOpen: true,
-      currentBook: bookConfig,
-    });
-
-    if (bookConfig.type === 'epub' || bookConfig.type === 'audible_epub') {
+    if (bookConfig.type === 'epub') {
       await this.epubManager.load(bookConfig.path);
-    }
-    if (bookConfig.type === 'audios' || bookConfig.type === 'audible_epub') {
+    } else if (bookConfig.type === 'audible_epub') {
+      await this.epubManager.load(bookConfig.path);
+
+    } else if (bookConfig.type === 'audios') {
       if (bookConfig.playlist) {
         const playlist = bookConfig.playlist;
-        const trackPositions: Array<{ startTime: number; endTime: number, trackIndex: number }> = [];
+        const trackPositions: TrackPosition[] = [];
         let totalDuration = 0;
+        
         playlist.forEach((track, index) => {
           const startTime = totalDuration;
           const endTime = startTime + (track.duration || 0);
@@ -165,16 +167,24 @@ class AudioBookReader {
           totalDuration = endTime;
         });
 
-        this.updateState({ trackPositions: trackPositions });
+        this.updateState({ trackPositions: trackPositions, totalDuration: totalDuration });
 
         this.audioManager.loadPlaylist(bookConfig.playlist);
         this.audioManager.applySettings(this.state.settings.audioPlay);
       } else {
-        console.warn(`<AudiobookReader> book [${bookConfig.path}] playlist undefined!`);
+        console.warn(`<AudiobookReader.open> book [${bookConfig.path}] playlist undefined!`);
       }
+    } else {
+      console.error(`<AudiobookReader.open> book [${bookConfig.path}] typte (${bookConfig.type}) unrecognized!`);
+      return;
     }
-
     this.emit('book-loaded', bookConfig);
+    
+    // 3. Update ReaderState
+    this.updateState({
+      isOpen: true,
+      currentBook: bookConfig,
+    });
   }
 
   public close() {

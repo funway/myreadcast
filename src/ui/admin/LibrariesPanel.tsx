@@ -45,8 +45,11 @@ export default function LibrariesPanel({ className }: Props) {
     try {
       // 2. 调用扫描 API
       const response = await fetch(`/api/library/${libraryId}/scan`);
+      if (!response.ok) {
+        throw new Error(`HTTP error - ${response.status}, ${response.statusText}`);
+      }
+
       const result = await response.json();
-     
       if (!result.success) {
         throw new Error(result.message || 'Failed to start scan');
       }
@@ -59,7 +62,7 @@ export default function LibrariesPanel({ className }: Props) {
       await pollTaskStatus(libraryId, task.id);
 
     } catch (error) {
-      toast.error(`Scan error: ${error}`);
+      toast.error(`${error}`);
       updateLibraryScanStatus(libraryId, 'error');
     }
   };

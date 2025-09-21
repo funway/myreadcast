@@ -42,21 +42,22 @@ export const BookTable = sqliteTable('book', {
   libraryId: text('library_id').notNull(),
   type: text('type', { enum: ['epub', 'audible_epub', 'audios'] }).notNull(),
   
-  path: text('path').notNull().unique(), // 对于 EPUB 来说就是文件路径，对于 Audios 来说就是文件夹路径
-  audios: text('audios', { mode: 'json' }).notNull().default(sql`'[]'`),  
-  mtime: integer('mtime').notNull(),  // 文件修改时间
-  size: integer('size').notNull(),  // 文件大小
+  path: text('path').notNull().unique(),  // 对于 EPUB 来说就是文件路径，对于 Audios 来说就是文件夹路径
+  opfPath: text('opf_path'),              // 对于 EPUB 来说就是解压后的 opf 文件路径，对于 Audios 来说就是 null
+  smilPath: text('smil_path'),            
+  audios: text('audios', { mode: 'json' }).notNull().default(sql`'[]'`),
+  playlist: text('playlist', { mode: 'json' }).notNull().default(sql`'[]'`),
+  mtime: integer('mtime').notNull(),      // 文件修改时间
+  size: integer('size').notNull(),        // 文件大小
 
-  title: text('title').notNull(), // 对于 EPUB 来说就是文件名，对于 Audios 来说就是目录名。允许用户修改
+  title: text('title').notNull(),         // 对于 EPUB 来说就是文件名，对于 Audios 来说就是目录名。允许用户修改
   author: text('author'),
   narrator: text('narrator'),
   isbn: text('isbn'),
   description: text('description'),
   coverPath: text('cover_path'),
   language: text('language'),
-  duration: integer('duration'),
-  wordCount: integer('word_count'),
-  
+
   tags: text('tags', { mode: 'json' }).notNull().default(sql`'[]'`),
   genre: text('genre', { mode: 'json' }).notNull().default(sql`'[]'`),
   ...timestamps,

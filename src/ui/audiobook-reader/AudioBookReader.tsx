@@ -20,6 +20,10 @@ export function AudioBookReader() {
     () => {
       console.log('[AudioBookReader] calls useEffect');
       
+      if (!isOpen) {
+        return; 
+      }
+
       const handleKeyDown = (event: KeyboardEvent) => {
         if (
           event.target instanceof HTMLInputElement ||
@@ -27,7 +31,7 @@ export function AudioBookReader() {
         ) {
           return;
         }
-        // console.log('keydown', event);
+        console.log('keydown', event);
         
         const action = KEYBOARD_SHORTCUTS[event.code as keyof typeof KEYBOARD_SHORTCUTS];
         if (action) {
@@ -41,7 +45,7 @@ export function AudioBookReader() {
         console.log('[AudioBookReader] useEffect cleanup');
         window.removeEventListener("keydown", handleKeyDown);
       };
-    }, []
+    }, [isOpen]
   );
 
   console.log('[AudioBookReader] rendering', {isOpen, currentBook});

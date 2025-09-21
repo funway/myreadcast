@@ -1,9 +1,7 @@
 import { Howl, Howler } from 'howler';
-import { ReaderState, AudioTrack, AudioPlaySettings } from '../types';
+import { ReaderState, AudioTrack, AudioPlaySettings, StateUpdater } from '../types';
 
 const PROGRESS_TRACKING_INTERVAL = 200;
-
-type StateUpdater = (newState: Partial<ReaderState>) => void;
 
 export class AudioManager {
   private updateState: StateUpdater;

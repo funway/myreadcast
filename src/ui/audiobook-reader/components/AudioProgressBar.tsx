@@ -4,7 +4,6 @@ import React, {
   useState,
   useRef,
   memo,
-  useMemo,
   useEffect
 } from 'react';
 import { reader } from '@/lib/client/audiobook-reader';
@@ -12,32 +11,15 @@ import { useReaderState } from '../hooks/useReaderState';
 import { formatTime } from '@/lib/client/utils';
 
 export const AudioProgressBar = memo(() => {
-  const { isPlaying, currentBook, currentTrackIndex, currentTrackTime, trackPositions} = useReaderState((s) => ({
+  const { isPlaying, currentBook, currentTrackIndex, currentTrackTime, trackPositions, totalDuration} = useReaderState((s) => ({
     isPlaying: s.isPlaying,
     currentBook: s.currentBook,
     currentTrackIndex: s.currentTrackIndex,
     currentTrackTime: s.currentTrackTime,
     trackPositions: s.trackPositions,
+    totalDuration: s.totalDuration,
   }), "AudioProgressBar");
-
-  const { playlist, totalDuration } = useMemo(() => {
-    if (!currentBook?.playlist) {
-      return { playlist: [], totalDuration: 0 };
-    }
-
-    const playlist = currentBook.playlist.map((track, index) => ({
-      ...track,
-      title: track.title || track.src.split('/').pop() || `Track ${index + 1
-        }`
-    }));
-    
-    let totalDuration = 0;
-    if (trackPositions && trackPositions.length > 1) {
-      totalDuration = trackPositions[trackPositions.length - 1].endTime;
-    }
-
-    return { playlist, totalDuration };
-  }, [currentBook, trackPositions]);
+  const playlist = currentBook?.playlist ?? [];
 
   const [tooltip, setTooltip] = useState<{
     visible: boolean;
@@ -200,3 +182,5 @@ export const AudioProgressBar = memo(() => {
     </div>
   );
 });
+
+AudioProgressBar.displayName = 'AudioProgressBar';

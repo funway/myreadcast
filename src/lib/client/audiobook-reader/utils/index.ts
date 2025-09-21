@@ -15,6 +15,23 @@ export function getAppColors(): { background: string; color: string } {
   }
 }
 
+/**
+ * Performs a shallow equality check between two values.
+ * 
+ * - Returns `true` if both values are strictly equal (`Object.is`), 
+ *   or if both are non-null objects with the same set of keys 
+ *   and their corresponding values are strictly equal.
+ * - Only checks the **first level** of properties (does not compare nested objects).
+ *
+ * @template T - The type of the objects being compared.
+ * @param {T} objA - The first object to compare.
+ * @param {T} objB - The second object to compare.
+ * @returns {boolean} `true` if the two values are shallowly equal, otherwise `false`.
+ *
+ * @example
+ * shallowEqual({a: 1, b: 2}, {a: 1, b: 2}); // true
+ * shallowEqual({a: {x: 1}}, {a: {x: 1}});   // false (different object references)
+ */
 export function shallowEqual<T>(objA: T, objB: T): boolean {
   if (Object.is(objA, objB)) return true;
   if (
@@ -26,8 +43,8 @@ export function shallowEqual<T>(objA: T, objB: T): boolean {
   const keysA = Object.keys(objA) as (keyof T)[];
   const keysB = Object.keys(objB) as (keyof T)[];
   if (keysA.length !== keysB.length) return false;
-  
-  for (let key of keysA) {
+
+  for (const key of keysA) {
     if (!(key in objB) || !Object.is(objA[key], objB[key])) {
       return false;
     }

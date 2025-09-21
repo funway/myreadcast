@@ -2,7 +2,6 @@ import fs from 'fs';
 import { promises as fsPromises } from 'fs';
 import path from 'path';
 import { LOG_DIR, LOG_MAX_FILES, LOG_MAX_FILE_SIZE, LOG_LEVEL } from './constants';
-import { LibsqlError } from '@libsql/client';
 import { DrizzleQueryError } from 'drizzle-orm';
 
 // 定义日志级别
