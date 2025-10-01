@@ -42,15 +42,17 @@ export const BookTable = sqliteTable('book', {
   libraryId: text('library_id').notNull(),
   type: text('type', { enum: ['epub', 'audible_epub', 'audios'] }).notNull(),
   
-  path: text('path').notNull().unique(),  // 对于 EPUB 来说就是文件路径，对于 Audios 来说就是文件夹路径
-  opfPath: text('opf_path'),              // 对于 EPUB 来说就是解压后的 opf 文件路径，对于 Audios 来说就是 null
-  smilPath: text('smil_path'),            
-  audios: text('audios', { mode: 'json' }).notNull().default(sql`'[]'`),
-  playlist: text('playlist', { mode: 'json' }).notNull().default(sql`'[]'`),
+  path: text('path').notNull().unique(),  // 原始文件(文件夹)路径
   mtime: integer('mtime').notNull(),      // 文件修改时间
   size: integer('size').notNull(),        // 文件大小
+  
+  folderPath: text('folder_path').notNull(), // 对于 EPUB 来说就是解压后的目录，对于 Audios 来说就是文件夹路径
+  opf: text('opf'),
+  smil: text('smil'),   
+  audios: text('audios', { mode: 'json' }).notNull().default(sql`'[]'`),
+  playlist: text('playlist', { mode: 'json' }).notNull().default(sql`'[]'`),
 
-  title: text('title').notNull(),         // 对于 EPUB 来说就是文件名，对于 Audios 来说就是目录名。允许用户修改
+  title: text('title').notNull(),
   author: text('author'),
   narrator: text('narrator'),
   isbn: text('isbn'),
@@ -80,7 +82,7 @@ export const ReadingProgressTable = sqliteTable('reading_progress', {
 export const TaskTable = sqliteTable('task', {
   id: text('id').primaryKey(),
   type: text('type', { enum: ['library_scan', 'book_match'] }).notNull(),
-  targetId: text('target_id').notNull(), // e.g., libraryId or bookId
+  targetId: text('target_id').notNull(),  // libraryId 或 bookId
   status: text('status', { enum: ['pending', 'running', 'completed', 'failed'] }).notNull().default('pending'),
 
   result: text('result'),  // 存储成功信息或错误详情

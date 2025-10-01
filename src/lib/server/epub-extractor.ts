@@ -5,8 +5,10 @@ import extract from 'extract-zip';
 import xml2js from 'xml2js';
 import { logger } from './logger';
 import { getAudioFileInfo, smilTimeToSeconds } from './helpers';
-import { AudioFileInfo, PlaylistItem } from "../shared/types";
+import { AudioFileInfoWithRel, PlaylistItemWithRel } from "../shared/types";
 import { SmilPar } from '../client/audiobook-reader';
+import { EPUB_MERGED_SMIL_FILE, EPUB_META_FILE } from '../shared/constants';
+import { BookNew } from './db/book';
 
 interface SmilParElem {
   $?: Record<string, string>;
@@ -31,7 +33,7 @@ interface EpubExtractMetadata {
   srcSize: number;       // 源文件大小
   srcHash?: string;      // 源文件 hash，可选
   unzipTime: number;     // 解压时间
-  version?: string;      // 解压版本，可选
+  version: string;       // 解压版本
 }
 
 interface OpfData {
@@ -40,35 +42,52 @@ interface OpfData {
   package: Record<string, any>; // xml2js解析后的结果
 }
 
-export class EpubParser {
-  private readonly defaultVersion = '1.0';
+export class EpubExtractor {
+  private readonly defaultVersion = '1.1';
+  private epubPath: string;
+  private extractDir: string;
+  private metaPath: string;
+  private smilPath: string;
+
+  public constructor(epubPath: string) { 
+    this.epubPath = epubPath;
+    
+    const baseName = path.basename(epubPath, '.epub');
+    this.extractDir = path.join(path.dirname(epubPath), `.${baseName}`);
+    this.metaPath = path.join(this.extractDir, EPUB_META_FILE);
+    this.smilPath = path.join(this.extractDir, EPUB_MERGED_SMIL_FILE);
+  }
+
+  public async extract() { 
+    await this.unzipEpub();
+    return await this.parseEpub();
+  }
 
   /**
    * 解压 EPUB 文件
    * 
-   * 如果 存在已解压目录 并且其中的 metadata.json 指向源 EPUB，则默认不再重新解压
-   * @param epubPath EPUB 文件路径
-   * @param extractDir 解压目录
-   * @param overwrite 是否强制覆盖 (即使目标目录已存在且是刚刚解压的，也强制重新解压覆盖)
+   * 如果 extractDir 已存在并且其中的 metaPath 文件信息与当前 epubPath 文件一致，则跳过解压
+   * @param overwrite 是否强制覆盖 (即使目标目录已存在且 metaPath 内信息一致，也强制重新解压覆盖)
    */
-  public async extractEpub(epubPath: string, extractDir: string, metadataPath: string, overwrite: boolean = false): Promise<void> {
-    logger.debug(`Extract epub [${epubPath}] to [${extractDir}]`);
+  private async unzipEpub(overwrite: boolean = false): Promise<void> {
+    logger.debug(`Unzip epub [${this.epubPath}] to [${this.extractDir}]`);
     
     // 获取 EPUB 文件信息
-    const stats = await fsp.stat(epubPath);
+    const stats = await fsp.stat(this.epubPath);
     const newMetadata: Omit<EpubExtractMetadata, 'unzipTime'> = {
-      srcPath: epubPath,
+      srcPath: this.epubPath,
       srcMtime: stats.mtimeMs,
       srcCtime: stats.ctimeMs,
       srcSize: stats.size,
+      version: this.defaultVersion,
     };
 
     // 1. 判断解压目录是否存在
     let needExtract = true;
-    if (!overwrite && fs.existsSync(extractDir) && fs.existsSync(metadataPath)) {
-      logger.debug('EpubExtractMetadata info exists', { metadataPath });
+    if (!overwrite && fs.existsSync(this.extractDir) && fs.existsSync(this.metaPath)) {
+      logger.debug('EpubExtractMetadata info exists', { meta_path: this.metaPath });
       try {
-        const existingMeta: EpubExtractMetadata = JSON.parse(await fsp.readFile(metadataPath, 'utf-8'));
+        const existingMeta: EpubExtractMetadata = JSON.parse(await fsp.readFile(this.metaPath, 'utf-8'));
         // 判断目录是否是最新的
         if (
           existingMeta.srcPath === newMetadata.srcPath &&
@@ -80,18 +99,18 @@ export class EpubParser {
           needExtract = false; // 不需要重新解压
         }
       } catch {
-        logger.warn('EpubExtractMetadata info parse error!', { metadataPath });
+        logger.warn('EpubExtractMetadata info parse error!', { meta_path: this.metaPath });
       }
     }
 
     // 2. 执行解压
     if (needExtract) {
       // 如果目录已存在但需要覆盖，可以先清空
-      if (fs.existsSync(extractDir)) {
-        await fsp.rm(extractDir, { recursive: true, force: true });
+      if (fs.existsSync(this.extractDir)) {
+        await fsp.rm(this.extractDir, { recursive: true, force: true });
       }
-      await fsp.mkdir(extractDir, { recursive: true });
-      await extract(epubPath, {dir: extractDir});
+      await fsp.mkdir(this.extractDir, { recursive: true });
+      await extract(this.epubPath, {dir: this.extractDir});
 
       // 3. 写入 metadata.json
       const metadata: EpubExtractMetadata = {
@@ -99,17 +118,17 @@ export class EpubParser {
         unzipTime: Date.now(),
         version: this.defaultVersion,
       };
-      await fsp.writeFile(metadataPath, JSON.stringify(metadata, null, 2), 'utf-8');
-      logger.debug('EPUB extracted', { metadata });
+      await fsp.writeFile(this.metaPath, JSON.stringify(metadata, null, 2), 'utf-8');
+      logger.debug('EPUB unzipped', { metadata });
     } else {
       logger.debug('EPUB extraction ignored - already exists and metadata match');
     }
   }
 
-  public async parseEpubExtracted(extractDir: string) {
+  private async parseEpub() {
     try {
       // 1. 查找并解析OPF文件
-      const opfPath = await this.findOpfFile(extractDir);
+      const opfPath = await this.findOpfFile(this.extractDir);
       const opfData = await this.parseOpfFile(opfPath);
       
       // 2. 从manifest中找到所有音频文件
@@ -117,6 +136,9 @@ export class EpubParser {
       
       // 3. 从manifest中找到所有SMIL文件并解析
       const smilPars = await this.parseSmilFiles(opfData);
+      if (smilPars.length > 0) {
+        await fsp.writeFile(this.smilPath, JSON.stringify(smilPars, null, 2), 'utf-8');
+      }
       
       // 4. 根据smil数组生成playlist
       const playlist = this.generatePlaylist(smilPars, audios);
@@ -124,23 +146,43 @@ export class EpubParser {
       // 5. 查找封面图片
       const coverPath = this.findCoverImagePath(opfData);
       
-      // 6. 解析metadata
+      // 6. 解析 metadata
       const metadata = this.parseMetadata(opfData);
-      
-      return {
-        audios,
-        playlist,
-        opfPath,
-        smilPars,
-        coverPath,
-        isbn: metadata.isbn,
-        title: metadata.title,
-        language: metadata.language,
+
+      // 7. 返回结果
+      const book: Omit<BookNew, 'libraryId' | 'mtime' | 'size'> = {
+        type: playlist.length > 0 ? 'audible_epub' : 'epub',
+        path: this.epubPath,
+        folderPath: this.extractDir,
+        opf: path.relative(this.extractDir, opfPath),
+        smil: smilPars.length > 0 ? path.relative(this.extractDir, this.smilPath) : undefined,
+        audios: audios,
+        playlist: playlist,
+        title: metadata.title || path.basename(this.epubPath, '.epub'),
         author: metadata.author,
-      };
+        isbn: metadata.isbn,
+        coverPath: coverPath,
+        language: metadata.language,
+      }
+      return book;
     } catch (error) {
       logger.error('解析EPUB文件失败:', error);
       throw error;
+    }
+  }
+
+  public async clearExtractedData(): Promise<void> {
+    // 删除 metaPath 文件
+    if (fs.existsSync(this.metaPath)) {
+      await fsp.rm(this.metaPath, { force: true });
+    }
+    // 删除 smilPath 文件
+    if (fs.existsSync(this.smilPath)) {
+      await fsp.rm(this.smilPath, { force: true });
+    }
+    // 删除解压目录
+    if (fs.existsSync(this.extractDir)) {
+      await fsp.rm(this.extractDir, { recursive: true, force: true });
     }
   }
 
@@ -182,9 +224,9 @@ export class EpubParser {
   /**
    * 获取音频文件信息
    */
-  private async getAudioFiles(opfData: OpfData): Promise<AudioFileInfo[]> {
+  private async getAudioFiles(opfData: OpfData): Promise<AudioFileInfoWithRel[]> {
     const manifest = opfData.package?.manifest?.[0]?.item || [];
-    const audios: AudioFileInfo[] = [];
+    const audios: AudioFileInfoWithRel[] = [];
     
     for (const item of manifest) {
       const mediaType = item.$['media-type'];
@@ -194,7 +236,7 @@ export class EpubParser {
         
         try {
           const audioInfo = await getAudioFileInfo(audioPath);
-          audios.push(audioInfo);
+          audios.push({...audioInfo, relPath: path.relative(this.extractDir, audioPath)});
         } catch (error) {
           logger.error(`获取音频文件信息失败: ${audioPath}`, error);
         }
@@ -284,9 +326,9 @@ export class EpubParser {
   /**
    * 生成播放列表
    */
-  private generatePlaylist(smilPars: SmilPar[], audios: AudioFileInfo[]): PlaylistItem[] {
-    const playlist: Array<{ filePath: string; title: string; duration: number }> = [];
-    const audioMap = new Map<string, AudioFileInfo>();
+  private generatePlaylist(smilPars: SmilPar[], audios: AudioFileInfoWithRel[]): PlaylistItemWithRel[] {
+    const playlist: PlaylistItemWithRel[] = [];
+    const audioMap = new Map<string, AudioFileInfoWithRel>();
     const seen = new Set<string>();
 
     // 建立音频文件映射：文件名 -> AudioFileInfo
@@ -304,6 +346,7 @@ export class EpubParser {
 
       playlist.push({
         filePath: audioInfo.filePath,
+        relPath: audioInfo.relPath,
         title: audioInfo.meta?.title || path.basename(audioFilename, path.extname(audioFilename)),
         duration: audioInfo.duration || 0,
       });

@@ -1,6 +1,6 @@
 import "./globals.css";
 import type { Metadata } from "next";
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { THEME_COOKIE } from "@/lib/shared/constants";
 import { ThemeProvider } from "@/ui/contexts/ThemeContext";
 import { logger } from "@/lib/server/logger";
@@ -24,8 +24,10 @@ export default async function RootLayout({
   
   const cookieStore = await cookies();
   const theme = cookieStore.get(THEME_COOKIE)?.value || 'light';
+  
   const sessionUser = await auth();
   logger.debug('[RootLayout] 获取当前用户', { sessionUser });
+  
   const libraries = sessionUser ? await getLibrariesData() : [];
   
   const initStates = {

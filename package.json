@@ -34,7 +34,6 @@
     "mitt": "^3.0.1",
     "music-metadata": "^11.9.0",
     "next": "15.4.6",
-    "next-auth": "5.0.0-beta.29",
     "npm": "^11.5.2",
     "react": "19.1.0",
     "react-dom": "19.1.0",

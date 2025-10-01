@@ -1,4 +1,3 @@
-import TestUI from "@/ui/test/TestUI";
 import Link from "next/link";
 
 export default async function HomePage() {

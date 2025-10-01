@@ -49,6 +49,7 @@ export async function getAudioFileInfo(filePath: string): Promise<AudioFileInfo>
       album: common.album,
       albumArtist: common.albumartist,
       year: common.year,
+      genre: common.genre,
       coverImageBase64
     }
   };

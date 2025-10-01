@@ -20,6 +20,7 @@ export default function BookCard({
       <div className="aspect-[3/4] bg-gray-200">
         <img 
           src={book.coverPath ?? "/image/book_placeholder.jpg"} 
+          // src="/image/book_placeholder.jpg"
           alt={book.title}
           className="w-full h-full object-fill"
         />
@@ -27,7 +28,7 @@ export default function BookCard({
       
       {/* 重叠的文字信息 */}
       {(showTitle || showAuthor) && (
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/70 to-transparent text-white p-3">
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-neutral/90 via-neutral/70 to-transparent text-white p-3">
           {showTitle && (
             <h3 className="text-sm font-semibold mb-1 line-clamp-2 leading-tight">
               {book.title}

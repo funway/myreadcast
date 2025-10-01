@@ -12,7 +12,7 @@ interface StatesStoreProviderProps {
 }
 
 export const StatesStoreProvider = ({children, initStates}: StatesStoreProviderProps) => { 
-  console.log('[StatesStoreProvider] 创建 store, 初始数据:', initStates);
+  console.log('[StatesStoreProvider] 创建 store');
   const store = createClientStatesStore(initStates);
   
   return (

@@ -17,8 +17,7 @@ export interface AudioFileInfo {
     album?: string;
     albumArtist?: string;
     year?: number;
-    trackNo?: number;
-    genre?: string;
+    genre?: string[];
     coverImageBase64?: string;  // 封面图（Base64 编码）
   };
 }
@@ -28,3 +27,8 @@ export interface PlaylistItem {
   title: string;
   duration: number;
 }
+
+export type WithRelPath<T> = T & { relPath: string };  // relPath 是相对于有声书根目录的相对路径
+
+export type AudioFileInfoWithRel = WithRelPath<AudioFileInfo>;
+export type PlaylistItemWithRel = WithRelPath<PlaylistItem>;

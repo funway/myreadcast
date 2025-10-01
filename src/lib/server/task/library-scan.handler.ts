@@ -1,14 +1,14 @@
-import { promises as fsp } from 'fs';
 import path from 'path';
+import { promises as fsp, Stats } from 'fs';
+import { DrizzleQueryError } from 'drizzle-orm';
 import { LibraryService } from "../db/library";
 import { logger } from "../logger";
 import { TaskHandler } from "./handler";
 import { Book, BookNew, BookService } from '../db/book';
-import { AUDIO_EXTENSIONS } from '../constants';
-import { DrizzleQueryError } from 'drizzle-orm';
-import { AudioFileInfo } from '@/lib/shared/types';
+import { AUDIO_EXTENSIONS, EPUB_MERGED_SMIL_FILE, EPUB_META_FILE } from '../constants';
+import { AudioFileInfo, AudioFileInfoWithRel } from '@/lib/shared/types';
 import { getAudioFileInfo } from '../helpers';
-import { EpubParser } from '../epub-parser';
+import { EpubExtractor } from '../epub-extractor';
 
 export class LibraryScanHandler extends TaskHandler { 
   public async run(): Promise<void> {
@@ -88,88 +88,38 @@ export class LibraryScanHandler extends TaskHandler {
    */
   private async scanFolder(folderPath: string, scannedBooks: BookNew[]) { 
     logger.debug(`Scanning foler: ${folderPath}`);
-    const parser = new EpubParser();
+    
     const items = await fsp.readdir(folderPath);
     for (const item of items) {
-      if (item.startsWith('.')) continue; // 跳过隐藏文件
+      if (item.startsWith('.')) continue;
 
       const itemPath = path.join(folderPath, item);
       const stats = await fsp.stat(itemPath);
 
       if (stats.isFile()) {
         if (path.extname(item).toLowerCase() === '.epub') {
+          // 1. 处理 EPUB 文件
+          const epubExtractor = new EpubExtractor(itemPath);
           try {
-            const baseName = path.basename(itemPath, '.epub');
-            const extractDir = path.join(path.dirname(itemPath), `.${baseName}`);
-            const metadataPath = path.join(extractDir, 'metadata.json');
-            const smilPath = path.join(extractDir, 'smil.json');
-
-            // 解压 EPUB
-            await parser.extractEpub(itemPath, extractDir, metadataPath);
-            
-            // 解析 EPUB
-            const parsed = await parser.parseEpubExtracted(extractDir);
-            logger.debug(`EPUB parsed success [${itemPath}]`, {
-              title: parsed.title,
-              author: parsed.author,
-              playlist_len: parsed.playlist.length,
-              smilPars_len: parsed.smilPars.length,
-            });
-            
-            // 合并 SMIL 并保存为 JSON
-            if (parsed.smilPars.length > 0) {
-              await fsp.writeFile(smilPath, JSON.stringify(parsed.smilPars, null, 2), 'utf-8');
-            }
-
-            const bookType = (parsed.playlist.length > 0 && parsed.smilPars.length > 0) ? 'audible_epub' as const : 'epub' as const;
+            const book = await epubExtractor.extract();
             scannedBooks.push({
+              ...book,
               libraryId: this.task.targetId,
-              path: itemPath,
-              mtime: Math.floor(stats.mtimeMs), // 只保留整数部分(毫秒)
+              mtime: Math.floor(stats.mtimeMs),  // 只保留整数部分(毫秒)
               size: stats.size,
-              type: bookType,
-              opfPath: parsed.opfPath,
-              smilPath: smilPath,
-              title: parsed.title || baseName,
-              audios: parsed.audios,
-              playlist: parsed.playlist,
-              author: parsed.author,
-              isbn: parsed.isbn,
-              coverPath: parsed.coverPath,
-              language: parsed.language,
             });
           } catch (error) {
-            logger.error(`Fail to parse the EPUB ${itemPath}`, error);
-            continue;
+            logger.error(`Fail to extract the EPUB ${itemPath}`, error);
+            epubExtractor.clearExtractedData();
           }
         }
       } else if (stats.isDirectory()) { 
-        // 检查目录下的音频文件
-        const audioFiles = await this.getAudioFiles(itemPath);
-        const audios = [...audioFiles].sort((a, b) => a.filePath.localeCompare(b.filePath));
-        const playlist = audios
-          .filter(a => a.duration > 0)
-          .map(a => ({
-            filePath: a.filePath,
-            title: a.meta?.title ?? path.basename(a.filePath),
-            duration: a.duration
-          }));
-
-        if (audioFiles.length > 0) {
-          scannedBooks.push({
-            libraryId: this.task.targetId,
-            type: 'audios',
-            path: itemPath,
-            title: path.basename(itemPath),
-            mtime: Math.floor(stats.mtimeMs),  // 只保留整数部分 (毫秒)
-            size: stats.size,
-            audios: audioFiles,
-            playlist: playlist,
-          });
-          
-          logger.debug(`Audiobook (folder) parsed success [${itemPath}]`, { playlist_len: playlist.length });
+        // 2. 处理 audios 子目录
+        const book = await this.collectAudiosAsBook(itemPath, stats);
+        if (book) {
+          scannedBooks.push(book);
         } else { 
-          // 如果不是音频文件夹，则递归扫描该文件夹
+          // 3. 递归扫描子目录
           await this.scanFolder(itemPath, scannedBooks);
         }
       }
@@ -200,6 +150,44 @@ export class LibraryScanHandler extends TaskHandler {
     }
 
     return audioFiles;
+  }
+
+  private async collectAudiosAsBook(folderPath: string, stats: Stats): Promise<BookNew | null> { 
+    const audioFiles = await this.getAudioFiles(folderPath);
+    if (audioFiles.length === 0) return null;
+
+    const audios = [...audioFiles]
+      .sort((a, b) => a.filePath.localeCompare(b.filePath))
+      .map(a => { 
+        const relPath = path.relative(folderPath, a.filePath);
+        return { ...a, relPath } as AudioFileInfoWithRel;
+      });
+    
+    const playlist = audios
+      .filter(a => a.duration > 0)
+      .map(a => ({
+        filePath: a.filePath,
+        relPath: a.relPath, 
+        title: a.meta?.title ?? path.basename(a.filePath),
+        duration: a.duration
+      }));
+    
+    const book: BookNew = {
+      libraryId: this.task.targetId,
+      type: 'audios',
+      
+      path: folderPath,
+      mtime: Math.floor(stats.mtimeMs),  // 只保留整数部分 (毫秒)
+      size: stats.size,
+      
+      folderPath: folderPath,
+      audios: audioFiles,
+      playlist: playlist,
+      
+      title: path.basename(folderPath),
+    }
+    logger.debug(`Audiobook (audio folder) parsed success [${folderPath}]`, { playlist_len: playlist.length });
+    return book;
   }
 
   private compareBooks(existingBooks: Book[], scannedBooks: BookNew[]): {
