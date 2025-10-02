@@ -95,11 +95,9 @@ class AudioBookReader {
   }
 
   /**
-   * 
    * @returns Return the ReaderState
    */
   public getState(): ReaderState {
-    // return { ...this.state };
     return this.state;
   }
 
@@ -143,16 +141,19 @@ class AudioBookReader {
   
 
   public async open(bookConfig: BookConfig) {
-    console.log('<reader> Opening book:', bookConfig.title || bookConfig.path);
+    console.log('<reader> Opening book:', bookConfig.title);
     
     // 1. Reset state before opening a new book
     this.close();
     
     // 2. Load new book
     if (bookConfig.type === 'epub') {
-      await this.epubManager.load(bookConfig.path);
+      await this.epubManager.load(bookConfig.opfPath!);
     } else if (bookConfig.type === 'audible_epub') {
-      await this.epubManager.load(bookConfig.path);
+      await this.epubManager.load(bookConfig.opfPath!);
+      
+      // TODO!
+      // audiomanager & smilManager
 
     } else if (bookConfig.type === 'audios') {
       if (bookConfig.playlist) {
@@ -190,7 +191,7 @@ class AudioBookReader {
   public close() {
     if (!this.state.isOpen) return;
 
-    console.log('<reader> Closing reader.');
+    console.log('<AudioBookReader> Closing reader.');
     this.epubManager.destroy();
     this.audioManager.destroy();
     
@@ -217,19 +218,16 @@ class AudioBookReader {
     this.audioManager.togglePlay();
   }
 
-  // public getToc() {
-  //   return this.epubManager.getToc();
-  // }
-
   /**
    * Get current trak's playback time lively
    * @returns 
    */
-  public getCurrentSeek() {
-    return this.audioManager.getCurrentSeek();
+  public getCurrentTrackSeek() {
+    return this.audioManager.getCurrentTrackSeek();
   }
 
   public goToHref(href: string) {
+    console.log(`<AudioBookReader.goToHref> href: ${href}`);
     this.epubManager.goToHref(href);
   }
 
@@ -263,6 +261,9 @@ class AudioBookReader {
     }
   }
 
+  /**
+   * @returns 当前在全局时间轴上的位置（秒）
+   */
   private getCurrentGlobalOffset(): number {
     const currentTrack = this.state.trackPositions?.find(
       track => track.trackIndex === this.state.currentTrackIndex
@@ -276,6 +277,10 @@ class AudioBookReader {
     return currentTrack.startTime + currentTrackTime;
   }
   
+  /**
+   * 
+   * @param seconds 向后跳转的秒数，默认 10 秒
+   */
   public rewind(seconds: number = 10) {
     // this.audioManager.rewind(seconds);
     const currentGlobalOffset = this.getCurrentGlobalOffset();
@@ -285,6 +290,9 @@ class AudioBookReader {
     this.seekTo(targetOffset);
   }
 
+  /**
+   * @param seconds 向前跳转的秒数，默认 10 秒
+   */
   public forward(seconds: number = 10) {
     const currentGlobalOffset = this.getCurrentGlobalOffset();
     const targetOffset = currentGlobalOffset + seconds;
@@ -309,6 +317,12 @@ class AudioBookReader {
     this.updateSettings({ audioPlay: { volume: clamped } })
   }
 
+  /**
+   * 跳转到指定音频 trackIndex 以及偏移位置, 可选是否播放
+   * @param param0.trackIndex 目标音频 track index
+   * @param param0.offset 目标音频内的偏移位置 (秒)
+   * @param param0.play 是否跳转后立即播放 (默认 false)
+   */
   public setTrack({ trackIndex, offset, play = false}: {
     trackIndex: number,
     offset?: number,

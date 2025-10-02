@@ -1,4 +1,5 @@
 import { logger } from "@/lib/server/logger";
+import { AudioBookReader } from "@/ui/audiobook-reader/AudioBookReader";
 import LibrarySideBar from "@/ui/library/LibrarySideBar";
 import NavBar from "@/ui/NavBar";
 
@@ -29,6 +30,9 @@ export default async function MainLayout({
         <main className="overflow-y-auto w-full">
           {children}
         </main>
+
+        {/* 全局阅读器组件 */}
+        <AudioBookReader />
 
       </div>
     </div>

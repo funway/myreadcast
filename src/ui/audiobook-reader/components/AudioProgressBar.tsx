@@ -91,7 +91,7 @@ export const AudioProgressBar = memo(() => {
     const baseTime = currentTrackPosition.startTime;
     
     const trackingProgress = () => {
-      const seek = reader.getCurrentSeek();
+      const seek = reader.getCurrentTrackSeek();
       if (currentTrackPosition && seek) {
         setTotalCurrentTime(baseTime + seek);
       }

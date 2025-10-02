@@ -1,26 +1,35 @@
-import type { Book } from '@/lib/server/db/book';
+"use client";
+
+import { BookConfig, reader } from '@/lib/client/audiobook-reader';
 import React from 'react';
 
 interface BookCardProps {
-  book: Book;
+  book: BookConfig;
   showTitle?: boolean;
   showAuthor?: boolean;
   className?: string;
 }
 
-export default function BookCard({ 
-  book, 
-  showTitle = true, 
-  showAuthor = true, 
-  className = "" 
+export default function BookCard({
+  book,
+  showTitle = true,
+  showAuthor = true,
+  className = ""
 }: BookCardProps) {
+
+  const handleClick = () => { 
+    console.log("BookCard clicked:", book);
+    reader.open(book);
+  }
+
   return (
-    <div className={`relative rounded-lg overflow-hidden bg-white shadow-md hover:shadow-2xl transition-all duration-300 cursor-pointer group ${className}`}>
+    <div
+      onClick={ handleClick }
+      className={`relative rounded-lg overflow-hidden bg-white shadow-md hover:shadow-2xl transition-all duration-300 cursor-pointer group ${className}`}>
       {/* 书籍封面 */}
       <div className="aspect-[3/4] bg-gray-200">
         <img 
-          src={book.coverPath ?? "/image/book_placeholder.jpg"} 
-          // src="/image/book_placeholder.jpg"
+          src={book.coverPath ?? "/image/book_placeholder.jpg"}
           alt={book.title}
           className="w-full h-full object-fill"
         />

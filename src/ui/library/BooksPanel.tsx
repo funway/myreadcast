@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import BookCard from '@/ui/library/BookCard';
-import type { Book, BookType } from '@/lib/server/db/book';
-import { toast } from 'react-toastify';
 import { useParams } from 'next/navigation';
+import { toast } from 'react-toastify';
+import type { Book, BookType } from '@/lib/server/db/book';
+import BookCard from '@/ui/library/BookCard';
 import MyIcon from '../MyIcon';
+import { createBookConfig } from '@/lib/client/audiobook-reader/utils';
 
 const PAGE_SIZE = 18;
 
@@ -315,7 +316,7 @@ export default function BooksPanel({ allGenres, allLanguages }: BooksPanelProps)
       {/* Books Grid View */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-6 gap-y-8">
         {books.map((book) => (
-          <BookCard key={book.id} book={book} />
+          <BookCard key={book.id} book={createBookConfig(book)} />
         ))}
       </div>
 

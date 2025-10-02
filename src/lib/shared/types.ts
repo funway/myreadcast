@@ -29,6 +29,5 @@ export interface PlaylistItem {
 }
 
 export type WithRelPath<T> = T & { relPath: string };  // relPath 是相对于有声书根目录的相对路径
-
 export type AudioFileInfoWithRel = WithRelPath<AudioFileInfo>;
 export type PlaylistItemWithRel = WithRelPath<PlaylistItem>;

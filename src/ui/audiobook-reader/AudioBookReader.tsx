@@ -8,7 +8,7 @@ import { KEYBOARD_SHORTCUTS, reader } from '@/lib/client/audiobook-reader';
 
 /**
  * The main <AudioBookReader /> component.
- * It acts as a frame, rendering either the EPUB modal or the audio-only bar.
+ * It acts as a frame, rendering either the EPUB modal or the audio-only bar modal.
  */
 export function AudioBookReader() {
   const { isOpen, currentBook } = useReaderState(

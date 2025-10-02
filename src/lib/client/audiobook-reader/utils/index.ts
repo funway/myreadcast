@@ -1,3 +1,7 @@
+import type { Book } from '@/lib/server/db/book';
+import { BookConfig } from "../types";
+import { PlaylistItemWithRel } from '@/lib/shared/types';
+
 export function getAppColors(): { background: string; color: string } {
   const defaultColors = { background: '#ffffff', color: '#000000' };
   if (typeof window === 'undefined') return defaultColors;
@@ -50,4 +54,33 @@ export function shallowEqual<T>(objA: T, objB: T): boolean {
     }
   }
   return true;
+}
+
+
+export function createBookConfig(bookData: Book): BookConfig {
+  const urlPath = `/api/book/${bookData.id}`;
+  
+  const oriPlaylist = bookData.playlist as PlaylistItemWithRel[] | undefined;
+  const playlist = oriPlaylist ? oriPlaylist.map(track => ({
+    title: track.title,
+    path: `${urlPath}/${track.relPath}`,
+    duration: track.duration,
+  })) : undefined;
+
+  const book: BookConfig = {
+    id: bookData.id,
+    type: bookData.type,
+    title: bookData.title,
+    path: urlPath,
+    
+    opfPath: bookData.opf ? `${urlPath}/${bookData.opf}` : undefined,
+    
+    coverPath: bookData.coverPath ? `${urlPath}/cover` : undefined,
+    
+    playlist: playlist,
+
+    author: bookData.author ? bookData.author : undefined,
+  };
+
+  return book;
 }

@@ -59,7 +59,7 @@ export async function GET(
     
     // 调用服务层方法
     const books = await BookService.queryBooks(options);
-    logger.debug('[API] Query books:', books);
+    logger.debug(`[API] Query books: ${books.length} books`);
 
     return NextResponse.json({
       success: true,

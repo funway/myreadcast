@@ -3,19 +3,20 @@ import { NavItem } from "epubjs";
 export type BookType = 'epub' | 'audible_epub' | 'audios'
 
 export interface BookConfig {
+  id: string;           // Book ID (数据库中的 ID)
   type: BookType;
-  path: string;
-  title?: string;
-  author?: string;
-  coverPath?: string;
-  audioFiles?: AudioTrack[];
+  title: string;
+  path: string;         // 书籍的 URL 路径 (/api/book/[bookId])
+  opfPath?: string;     // EPUB 的 OPF 文件路径 (/api/book/[bookId]/[...relPath])
+  coverPath?: string;   // 书籍封面的 URL 路径 (/api/book/[bookId]/cover)
   playlist?: AudioTrack[];
+  author?: string;
 }
 
 export interface AudioTrack {
-  src: string;
-  title?: string;
-  duration: number; // 秒数，用于计算总时长和进度条显示
+  title: string;
+  path: string;         // 音频文件的 URL 路径 (/api/book/[bookId]/[...relPath])
+  duration: number;     // 音频文件时长(float 秒)
 }
 
 export interface TrackPosition { 

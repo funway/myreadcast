@@ -26,9 +26,9 @@ export default function TestUI() {
               path: '/books/hp-fire/OEBPS/audio', // 使用我们规划的测试路径
               title: '纯音频',
               playlist: [
-                { src: "/books/hp-fire/OEBPS/audio/aud_0.mp3", duration: 120 },
-                { src: "/books/hp-fire/OEBPS/audio/aud_1.mp3", duration: 104 },
-                { src: "/books/hp-fire/OEBPS/audio/aud_2.mp3", duration: 1436 },
+                { path: "/books/hp-fire/OEBPS/audio/aud_0.mp3", duration: 120 },
+                { path: "/books/hp-fire/OEBPS/audio/aud_1.mp3", duration: 104 },
+                { path: "/books/hp-fire/OEBPS/audio/aud_2.mp3", duration: 1436 },
               ],
             })
           }

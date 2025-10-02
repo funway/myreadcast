@@ -17,10 +17,7 @@ export class AudioManager {
   }
 
   public loadPlaylist(playlist: AudioTrack[]) {
-    this.playlist = playlist.map((track, index) => ({
-      ...track,
-      title: track.title || track.src.split('/').pop() || `Track ${index + 1}`
-    }));
+    this.playlist = playlist;
     console.log('<AudioManager> load playlist:', this.playlist);
   }
 
@@ -50,7 +47,7 @@ export class AudioManager {
     });
     
     this.sound = new Howl({
-      src: [track.src],
+      src: [track.path],
       html5: true,  // Force HTML5 Audio to enable streaming
       onload: () => {
         console.log('<AudioManager> Track loaded', trackIndex);
@@ -212,7 +209,7 @@ export class AudioManager {
     this.sound?.seek(time);
   }
 
-  public getCurrentSeek() {
+  public getCurrentTrackSeek() {
     return this.sound?.seek();
   }
 
