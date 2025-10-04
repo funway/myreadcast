@@ -11,15 +11,16 @@ import { useReaderState } from '../hooks/useReaderState';
 import { formatTime } from '@/lib/client/utils';
 
 export const AudioProgressBar = memo(() => {
-  const { isPlaying, currentBook, currentTrackIndex, currentTrackTime, trackPositions, totalDuration} = useReaderState((s) => ({
+  const { isPlaying, currentBook, currentTrackIndex, currentTrackTime} = useReaderState((s) => ({
     isPlaying: s.isPlaying,
     currentBook: s.currentBook,
     currentTrackIndex: s.currentTrackIndex,
     currentTrackTime: s.currentTrackTime,
-    trackPositions: s.trackPositions,
-    totalDuration: s.totalDuration,
   }), "AudioProgressBar");
   const playlist = currentBook?.playlist ?? [];
+  const trackPositions = currentBook?.trackPositions ?? [];
+  const totalDuration = currentBook?.totalDuration ?? 0;
+  const totalCurrentTime = reader.getGlobalSeek();
 
   const [tooltip, setTooltip] = useState<{
     visible: boolean;
@@ -27,20 +28,20 @@ export const AudioProgressBar = memo(() => {
     text: string
   }>({ visible: false, left: 0, text: '' });
   const [hoverPosition, setHoverPosition] = useState<number | null>(null);
-  const [totalCurrentTime, setTotalCurrentTime] = useState(0);
+  // const [totalCurrentTime, setTotalCurrentTime] = useState(0);
   const progressBarRef = useRef<HTMLDivElement>(null);
   const progressPercent = totalDuration ? (totalCurrentTime / totalDuration) * 100 : 0;
   
-  console.log("[AudioProgressBar] rendering", {
-    isPlaying,
-    playlist,
-    trackPositions,
-    currentTrackIndex,
-    currentTrackTime,
-    totalCurrentTime,
-    totalDuration,
-    progressPercent,
-  });
+  // console.log("[AudioProgressBar] rendering", {
+  //   isPlaying,
+  //   playlist,
+  //   trackPositions,
+  //   currentTrackIndex,
+  //   currentTrackTime,
+  //   totalCurrentTime,
+  //   totalDuration,
+  //   progressPercent,
+  // });
 
   const handleSeek = (event: React.MouseEvent<HTMLDivElement>) => {
     if (!progressBarRef.current || !totalDuration)
@@ -52,7 +53,7 @@ export const AudioProgressBar = memo(() => {
     const targetTime = percentage * totalDuration;
     
     reader.seekTo(targetTime);
-    setTotalCurrentTime(targetTime);
+    // setTotalCurrentTime(targetTime);
   };
 
   const handleMouseMove = (event: React.MouseEvent<HTMLDivElement>) => {
@@ -81,34 +82,34 @@ export const AudioProgressBar = memo(() => {
     setHoverPosition(null);
   };
 
-  useEffect(() => {
-    if (trackPositions === undefined || trackPositions.length === 0) {
-      return;
-    }
+  // useEffect(() => {
+  //   if (trackPositions === undefined || trackPositions.length === 0) {
+  //     return;
+  //   }
 
-    let animationFrameId: number;
-    const currentTrackPosition = trackPositions[currentTrackIndex ?? 0];
-    const baseTime = currentTrackPosition.startTime;
+  //   let animationFrameId: number;
+  //   const currentTrackPosition = trackPositions[currentTrackIndex ?? 0];
+  //   const baseTime = currentTrackPosition.startTime;
     
-    const trackingProgress = () => {
-      const seek = reader.getCurrentTrackSeek();
-      if (currentTrackPosition && seek) {
-        setTotalCurrentTime(baseTime + seek);
-      }
-      animationFrameId = requestAnimationFrame(trackingProgress);
-    };
+  //   const trackingProgress = () => {
+  //     const seek = reader.getCurrentTrackSeek();
+  //     if (currentTrackPosition && seek) {
+  //       setTotalCurrentTime(baseTime + seek);
+  //     }
+  //     animationFrameId = requestAnimationFrame(trackingProgress);
+  //   };
     
-    if (isPlaying) {
-      animationFrameId = requestAnimationFrame(trackingProgress);
-    } else {
-      setTotalCurrentTime(baseTime + (currentTrackTime ?? 0));
-    }
+  //   if (isPlaying) {
+  //     animationFrameId = requestAnimationFrame(trackingProgress);
+  //   } else {
+  //     setTotalCurrentTime(baseTime + (currentTrackTime ?? 0));
+  //   }
 
-    return () => {
-      console.log("[AudioProgressBar] useEffect cleanup");
-      cancelAnimationFrame(animationFrameId);
-    }
-  }, [isPlaying, currentTrackIndex, currentTrackTime, trackPositions]);
+  //   return () => {
+  //     console.log("[AudioProgressBar] useEffect cleanup");
+  //     cancelAnimationFrame(animationFrameId);
+  //   }
+  // }, [isPlaying, currentTrackIndex, currentTrackTime, trackPositions]);
 
   return (
     <div className="w-full">

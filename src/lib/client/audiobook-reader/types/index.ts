@@ -2,24 +2,26 @@ import { NavItem } from "epubjs";
 
 export type BookType = 'epub' | 'audible_epub' | 'audios'
 
-export interface BookConfig {
+export type BookConfig = {
   id: string;           // Book ID (数据库中的 ID)
   type: BookType;
   title: string;
   path: string;         // 书籍的 URL 路径 (/api/book/[bookId])
   opfPath?: string;     // EPUB 的 OPF 文件路径 (/api/book/[bookId]/[...relPath])
   coverPath?: string;   // 书籍封面的 URL 路径 (/api/book/[bookId]/cover)
-  playlist?: AudioTrack[];
+  playlist: AudioTrack[];
+  trackPositions: TrackPosition[];  // playlist 中每个 track 的全局开始结束时间
+  totalDuration: number;            // playlist 音频总时长 (秒)
   author?: string;
 }
 
-export interface AudioTrack {
+export type AudioTrack = {
   title: string;
   path: string;         // 音频文件的 URL 路径 (/api/book/[bookId]/[...relPath])
   duration: number;     // 音频文件时长(float 秒)
 }
 
-export interface TrackPosition { 
+export type TrackPosition ={ 
   trackIndex: number,
   startTime: number,
   endTime: number,
@@ -28,7 +30,7 @@ export interface TrackPosition {
 /**
  * https://www.w3.org/submissions/2017/SUBM-epub-mediaoverlays-20170125/#sec-smil-par-elem
  */
-export interface SmilPar { 
+export type SmilPar ={ 
   id?: string;        // Par id (optional)
   textSrc: string;    // text 所在的文件路径
   textId: string;     // text 所在的标签 id
@@ -81,25 +83,25 @@ export const KEYBOARD_SHORTCUTS = {
 
 export type ShortcutAction = typeof KEYBOARD_SHORTCUTS[keyof typeof KEYBOARD_SHORTCUTS];
 
-export interface EpubViewSettings {
+export type EpubViewSettings = {
   fontFamily: string;
   fontSize: number;
   lineHeight: number;
 }
 
-export interface AudioPlaySettings {
+export type AudioPlaySettings = {
   volume: number;
   playbackRate: number;
   autoPlay: boolean;
   continuousPlay: boolean;
 }
 
-export interface ReaderSettings {
+export type ReaderSettings = {
   epubView: EpubViewSettings;
   audioPlay: AudioPlaySettings;
 }
 
-export interface ReaderState {
+export type ReaderState = {
   isOpen: boolean;                  // AudioBookReader UI 组件是否显示
   isPlaying: boolean;               // AudioPlayer 是否播放音频
   settings: ReaderSettings;         // AudioBookReader UI 组件的设置
@@ -109,13 +111,12 @@ export interface ReaderState {
   currentCfi?: string;                // 当前的 EPUB CFI (阅读进度)
   currentTrackIndex?: number;         // 当前选中的 track idx
   currentTrackTime?: number;          // 当前 track 播放的时间点 (播放进度)
-  trackPositions?: TrackPosition[];   // playlist 中每个 track 的全局开始结束时间
-  totalDuration?: number;             // playlist 音频总时长
   
   currentHighlightId?: string;        
 
   // Error state
-  error?: { message: string; code?: string };
+  // error?: { message: string; code?: string };
+  debug_msg?: string;                 // 仅用于调试显示的消息
 }
 
 /**

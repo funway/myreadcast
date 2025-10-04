@@ -10,13 +10,22 @@ import { SmilPar } from '../client/audiobook-reader';
 import { EPUB_MERGED_SMIL_FILE, EPUB_META_FILE } from '../shared/constants';
 import { BookNew } from './db/book';
 
-interface SmilParElem {
+type ManifestItem = {
+  $: {
+    id: string;
+    href: string;
+    'media-type': string;
+    'media-overlay'?: string;
+  };
+};
+
+type SmilParElem = {
   $?: Record<string, string>;
   text: Array<{ $: Record<string, string> }>;
   audio?: Array<{ $: Record<string, string> }>;
 }
 
-interface SmilSeqElem {
+type SmilSeqElem = {
   seq?: SmilSeqElem[];
   par?: SmilParElem[];
 }
@@ -26,7 +35,7 @@ interface SmilBodyElem {
   par?: SmilParElem[];
 }
 
-interface EpubExtractMetadata {
+type EpubExtractMetadata = {
   srcPath: string;       // 源 EPUB 文件路径
   srcMtime: number;      // 源文件 mtime
   srcCtime: number;      // 源文件 ctime
@@ -36,7 +45,7 @@ interface EpubExtractMetadata {
   version: string;       // 解压版本
 }
 
-interface OpfData {
+type OpfData = {
   opfDir: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   package: Record<string, any>; // xml2js解析后的结果
@@ -250,26 +259,39 @@ export class EpubExtractor {
    * 解析SMIL文件
    */
   private async parseSmilFiles(opfData: OpfData): Promise<SmilPar[]> {
-    const manifest = opfData.package?.manifest?.[0]?.item || [];
+    const manifest: ManifestItem[] = opfData.package?.manifest?.[0]?.item || [];
+    const spine = opfData.package?.spine?.[0]?.itemref || [];
     const smilPars: SmilPar[] = [];
-    
-    for (const item of manifest) {
-      const mediaType = item.$['media-type'];
-      if (mediaType === 'application/smil+xml') {
-        const href = item.$.href;
-        const smilPath = path.resolve(opfData.opfDir, decodeURIComponent(href));
-        
-        if (fs.existsSync(smilPath)) {
-          const smilContent = await fsp.readFile(smilPath, 'utf8');
-          const pars = await this.parseSmilContent(smilContent);
-          smilPars.push(...pars);
-          logger.debug(`Parse SMIL file ${smilPath} - Got ${pars.length} pars`);
-        } else {
-          logger.warn(`Parse SMIL file ${smilPath} failed - no such file exist`);
-        }
+
+    // 1. 遍历 spine（章节顺序）
+    for (const itemref of spine) {
+      const idref = itemref.$.idref;
+
+      // 2. 找到 manifest 中对应的 item
+      const spineItem = manifest.find(m => m.$.id === idref);
+      if (!spineItem) continue;
+
+      // 3. 如果该 item 有 media-overlay 属性 → 指向 smil item
+      const overlayId = spineItem.$['media-overlay'];
+      if (!overlayId) continue;
+
+      const smilItem = manifest.find(m => m.$.id === overlayId);
+      if (!smilItem) continue;
+
+      const href = smilItem.$.href;
+      const smilPath = path.resolve(opfData.opfDir, decodeURIComponent(href));
+
+      // 4. 解析 SMIL 文件
+      if (fs.existsSync(smilPath)) {
+        const smilContent = await fsp.readFile(smilPath, 'utf8');
+        const pars = await this.parseSmilContent(smilContent);
+        smilPars.push(...pars);
+        logger.debug(`Parse SMIL file ${smilPath} - Got ${pars.length} pars`);
+      } else {
+        logger.warn(`Parse SMIL file ${smilPath} failed - no such file`);
       }
     }
-    
+
     return smilPars;
   }
 

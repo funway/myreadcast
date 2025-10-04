@@ -1,5 +1,5 @@
 import type { Book } from '@/lib/server/db/book';
-import { BookConfig } from "../types";
+import { BookConfig, TrackPosition } from "../types";
 import { PlaylistItemWithRel } from '@/lib/shared/types';
 
 export function getAppColors(): { background: string; color: string } {
@@ -56,16 +56,24 @@ export function shallowEqual<T>(objA: T, objB: T): boolean {
   return true;
 }
 
-
 export function createBookConfig(bookData: Book): BookConfig {
   const urlPath = `/api/book/${bookData.id}`;
   
-  const oriPlaylist = bookData.playlist as PlaylistItemWithRel[] | undefined;
-  const playlist = oriPlaylist ? oriPlaylist.map(track => ({
+  const rawPlaylist = bookData.playlist as PlaylistItemWithRel[] | undefined;
+  const playlist = rawPlaylist ? rawPlaylist.map(track => ({
     title: track.title,
     path: `${urlPath}/${track.relPath}`,
     duration: track.duration,
-  })) : undefined;
+  })) : [];
+  
+  const trackPositions: TrackPosition[] = [];
+  let totalDuration = 0;
+  playlist.forEach((track, index) => {
+    const startTime = totalDuration;
+    const endTime = startTime + (track.duration || 0);
+    trackPositions.push({ startTime, endTime, trackIndex: index });
+    totalDuration = endTime;
+  });
 
   const book: BookConfig = {
     id: bookData.id,
@@ -74,10 +82,11 @@ export function createBookConfig(bookData: Book): BookConfig {
     path: urlPath,
     
     opfPath: bookData.opf ? `${urlPath}/${bookData.opf}` : undefined,
-    
     coverPath: bookData.coverPath ? `${urlPath}/cover` : undefined,
     
-    playlist: playlist,
+    playlist,
+    trackPositions,
+    totalDuration,
 
     author: bookData.author ? bookData.author : undefined,
   };

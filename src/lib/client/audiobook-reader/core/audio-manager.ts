@@ -1,5 +1,6 @@
 import { Howl, Howler } from 'howler';
-import { ReaderState, AudioTrack, AudioPlaySettings, StateUpdater } from '../types';
+import { AudioTrack, AudioPlaySettings, StateUpdater } from '../types';
+import { set } from 'zod';
 
 const PROGRESS_TRACKING_INTERVAL = 200;
 
@@ -7,6 +8,8 @@ export class AudioManager {
   private updateState: StateUpdater;
   private playlist: AudioTrack[] = [];
   private sound: Howl | null = null;
+  private soundId: number | null = null;
+  private pendingSeek: number | null = null;
   private currentTrackIndex: number = 0;
   private continuousPlay: boolean = true;
   private progressTracking: number | null = null;
@@ -31,67 +34,88 @@ export class AudioManager {
     
     const track = this.playlist[trackIndex];
     if (!track) {
-      console.warn(`<AudioManager> Track index [${trackIndex}] not exist`);
+      console.warn(`<AudioManager.setTrack> Track index [${trackIndex}] not exist`);
       return;
     }
 
-    if (this.sound) {
-      this.sound.unload();
-      this.sound = null;
+    if (this.sound && this.currentTrackIndex === trackIndex) {
+      console.log('<AudioManager.setTrack> Same track, just seek and play/pause');
+    } else {
+      if (this.sound) {
+        this.sound.unload();
+        this.sound = null;
+        this.soundId = null;
+        console.log('<AudioManager.setTrack> Unload previous track');
+      }
+
+      console.log('<AudioManager.setTrack> Loading new track:', track);
+      this.currentTrackIndex = trackIndex;
+      this.sound = new Howl({
+        src: [track.path],
+        html5: true,  // Force HTML5 Audio to enable streaming
+        loop: false,
+        onload: () => {
+          console.log(`<AudioManager> Howl event - Track loaded. index=${trackIndex}`);
+          this.updateState({
+            currentTrackIndex: this.currentTrackIndex,
+            debug_msg: 'Howl onload fired'
+          });
+        },
+        onplay: (id) => {  // But sound.playing() does not immediately return true.
+          console.log(`<AudioManager> Howl event - Track start playing. index=${trackIndex}, soundId=${id}`);
+          this.sound?.rate(this.playbackRate);
+          this.updateState({
+            isPlaying: true,
+            debug_msg: 'Howl onplay fired'
+          });
+          if (this.pendingSeek !== null) {
+            console.log(`<AudioManager> Applying pending seek to ${this.pendingSeek}`);
+            this.safeSeek(this.pendingSeek);
+            this.pendingSeek = null;
+          }
+          this.startProgressTracking();
+        },
+        onpause: () => {
+          const seek = this.sound?.seek();
+          console.log(`<AudioManager> Howl event - Track pause playing. index=${trackIndex}, time=${seek}`);
+          this.updateState({
+            isPlaying: false,
+            // currentTrackTime: this.sound?.seek(),
+            debug_msg: 'Howl onpause fired'
+          });
+        },
+        onseek: () => { 
+          const seek = this.sound?.seek();
+          console.log(`<AudioManager> Howl event - Track seek. index=${trackIndex}, time=${seek}`);
+          // this.updateState({ currentTrackTime: seek, debug_msg: 'Howl onseek fired' });
+        },
+        onend: () => {
+          console.log(`<AudioManager> Howl event - Track ended. index=${trackIndex}`);
+          if (this.continuousPlay && (this.currentTrackIndex < this.playlist.length - 1)) {
+            this.updateState({ debug_msg: 'Howl onend fired - Play next track' });
+            this.next();
+          } else {
+            this.updateState({ isPlaying: false, debug_msg: 'Howl onend fired' });
+            this.pause();
+            this.stopProgressTracking();
+          }
+        },
+      });
     }
 
-    this.currentTrackIndex = trackIndex;
+    if (offset !== undefined) {
+      this.safeSeek(offset);
+    }
+
     this.updateState({
       currentTrackIndex: trackIndex,
       ...(offset !== undefined ? { currentTrackTime: offset } : {})
     });
-    
-    this.sound = new Howl({
-      src: [track.path],
-      html5: true,  // Force HTML5 Audio to enable streaming
-      onload: () => {
-        console.log('<AudioManager> Track loaded', trackIndex);
-        this.updateState({currentTrackIndex: this.currentTrackIndex});
-      },
-      onplay: () => {
-        console.log('<AudioManager> Track start playing');
-        // But this.sound.playing() does not immediately return true.
-        this.sound?.rate(this.playbackRate);
-        this.updateState({ isPlaying: true });
-        this.startProgressTracking();
-      },
-      onpause: () => {
-        console.log('<AudioManager> Track pause playing');
-        this.updateState({
-          isPlaying: false,
-          currentTrackTime: this.sound?.seek(),
-         });
-      },
-      onseek: () => { 
-        const seek = this.sound?.seek();
-        console.log('<AudioManager> Track seek', seek);
-        this.updateState({ currentTrackTime: seek});
-      },
-      onend: () => {
-        console.log('<AudioManager> Track end');
-
-        if (this.continuousPlay && (this.currentTrackIndex < this.playlist.length - 1)) {
-          this.next();
-        } else {
-          this.updateState({ isPlaying: false });
-          this.stopProgressTracking();
-        }
-      },
-    });
-
-    if (offset !== undefined) {
-      this.sound.once('play', () => {
-        this.seek(offset);
-      });
-    }
 
     if (play) {
       this.play();
+    } else {
+      this.pause();
     }
   }
 
@@ -118,18 +142,23 @@ export class AudioManager {
     console.log(`<AudioManager> startProgressTracking. delay ${delay}ms`);
     
     const step = () => { 
-      console.log('<AudioManager> startProgressTracking.step');
-      this.updateState({
-        currentTrackIndex: this.currentTrackIndex,
-        currentTrackTime: this.sound?.seek(),
-      });
+      console.log('<AudioManager.startProgressTracking.step> Tracking progress in backend');
       if (this.sound?.playing()) {
+        this.updateState({
+          currentTrackIndex: this.currentTrackIndex,
+          currentTrackTime: this.sound?.seek(),
+          debug_msg: '<AudioManager> Progress tracking update',
+        });
+
+        // 设置下一次 tracking
         this.progressTracking = window.setTimeout(step, PROGRESS_TRACKING_INTERVAL);
       } else {
+        // 停止 tracking
         this.progressTracking = null;
       }
     };
     
+    // 启动第一次 tracking
     this.progressTracking = window.setTimeout(step, delay); 
   }
 
@@ -144,11 +173,20 @@ export class AudioManager {
    * Start/Continue playing
    */
   public play() {
-    this.sound?.play();
+    if (!this.sound) {
+      console.error('<AudioManager.play> No track loaded');
+      return;
+    }
+
+    if (this.soundId === null) {
+      this.soundId = this.sound.play();
+    } else {
+      this.sound.play(this.soundId);
+    }
   }
 
   public pause() {
-    this.sound?.pause();
+    this.sound?.pause(this.soundId!);
   }
 
   public togglePlay() {
@@ -176,28 +214,24 @@ export class AudioManager {
   }
 
   public prev(autoPlay: boolean = true) {
-    if (this.currentTrackIndex > 0) {
-      this.setTrack({
-        trackIndex: this.currentTrackIndex - 1,
-        offset: 0,
-        play: autoPlay,
-      });
-    } else {
-      this.seek(0);
-    }
+    this.setTrack({
+      trackIndex: this.currentTrackIndex - 1 >= 0 ? this.currentTrackIndex - 1 : 0,
+      offset: 0,
+      play: autoPlay,
+    });
   }
   
   public forward(seconds: number) {
       if (!this.sound) return;
       const current = this.sound.seek() || 0;
       const duration = this.sound.duration() || 0;
-      this.seek(Math.min(current + seconds, duration));
+      this.safeSeek(Math.min(current + seconds, duration));
   }
 
   public rewind(seconds: number) {
       if (!this.sound) return;
       const current = this.sound.seek() || 0;
-      this.seek(Math.max(0, current - seconds));
+      this.safeSeek(Math.max(0, current - seconds));
   }
 
   /**
@@ -205,12 +239,24 @@ export class AudioManager {
    *
    * @param time Playback position in seconds (float).
    */
-  public seek(time: number) {
-    this.sound?.seek(time);
+  private safeSeek(time: number) {
+    if (!this.sound) {
+      console.error('<AudioManager.seek> No track loaded');
+      return;
+    }
+    if (this.sound.playing()) {
+      const dur = this.sound.duration();  // 如果 sound 未加载完，duration 可能为 0, 所以要在 playing() 之后调用
+      console.log(`<AudioManager.seek> Seek to ${time} / ${dur}`);
+      const safeTime = Math.max(0, Math.min(time, dur));
+      this.sound.seek(safeTime, this.soundId!);
+    } else {
+      console.log('<AudioManager.seek> Track not playing, set pending seek to', time);
+      this.pendingSeek = time;
+    }
   }
 
   public getCurrentTrackSeek() {
-    return this.sound?.seek();
+    return this.sound?.seek() ?? 0;
   }
 
   /**
@@ -220,7 +266,7 @@ export class AudioManager {
    */
   public setRate(rate: number) {
     this.playbackRate = rate;
-    this.sound?.rate(rate);
+    this.sound?.rate(rate, this.soundId!);
   }
 
   /**
@@ -242,6 +288,8 @@ export class AudioManager {
     if (this.sound) {
       this.sound.unload();
       this.sound = null;
+      this.soundId = null;
+      this.pendingSeek = null;
     }
     this.playlist = [];
     this.currentTrackIndex = 0;

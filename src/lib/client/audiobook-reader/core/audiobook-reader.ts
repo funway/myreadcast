@@ -9,7 +9,6 @@ import {
   ReaderSettings,
   AudioPlaySettings,
   EpubViewSettings,
-  TrackPosition,
 } from '../types';
 import { EpubManager } from './epub-manager';
 import { AudioManager } from './audio-manager';
@@ -138,7 +137,6 @@ class AudioBookReader {
       console.log("<reader> updateState, no-changed");
     }
   }
-  
 
   public async open(bookConfig: BookConfig) {
     console.log('<reader> Opening book:', bookConfig.title);
@@ -150,31 +148,18 @@ class AudioBookReader {
     if (bookConfig.type === 'epub') {
       await this.epubManager.load(bookConfig.opfPath!);
     } else if (bookConfig.type === 'audible_epub') {
+      // 2.1 加载 EPUB
       await this.epubManager.load(bookConfig.opfPath!);
-      
+      // 2.2 加载 音频播放列表
+      this.audioManager.loadPlaylist(bookConfig.playlist);
+      this.audioManager.applySettings(this.state.settings.audioPlay);
+      // 2.3 加载 SMIL
       // TODO!
       // audiomanager & smilManager
 
     } else if (bookConfig.type === 'audios') {
-      if (bookConfig.playlist) {
-        const playlist = bookConfig.playlist;
-        const trackPositions: TrackPosition[] = [];
-        let totalDuration = 0;
-        
-        playlist.forEach((track, index) => {
-          const startTime = totalDuration;
-          const endTime = startTime + (track.duration || 0);
-          trackPositions.push({ startTime, endTime, trackIndex: index });
-          totalDuration = endTime;
-        });
-
-        this.updateState({ trackPositions: trackPositions, totalDuration: totalDuration });
-
-        this.audioManager.loadPlaylist(bookConfig.playlist);
-        this.audioManager.applySettings(this.state.settings.audioPlay);
-      } else {
-        console.warn(`<AudiobookReader.open> book [${bookConfig.path}] playlist undefined!`);
-      }
+      this.audioManager.loadPlaylist(bookConfig.playlist);
+      this.audioManager.applySettings(this.state.settings.audioPlay);
     } else {
       console.error(`<AudiobookReader.open> book [${bookConfig.path}] typte (${bookConfig.type}) unrecognized!`);
       return;
@@ -218,14 +203,6 @@ class AudioBookReader {
     this.audioManager.togglePlay();
   }
 
-  /**
-   * Get current trak's playback time lively
-   * @returns 
-   */
-  public getCurrentTrackSeek() {
-    return this.audioManager.getCurrentTrackSeek();
-  }
-
   public goToHref(href: string) {
     console.log(`<AudioBookReader.goToHref> href: ${href}`);
     this.epubManager.goToHref(href);
@@ -236,14 +213,14 @@ class AudioBookReader {
    * @param globalOffset 全局时间轴上的位置（秒）
    */
   public seekTo(globalOffset: number) {
-    const trackPositions = this.state.trackPositions;
-    if (trackPositions === undefined) {
-      console.warn('<AudioBookReader.seekTo> trackPositions undefined');
+    const trackPositions = this.state.currentBook?.trackPositions;
+    if (trackPositions === undefined || trackPositions.length === 0) {
+      console.warn('<AudioBookReader.seekTo> trackPositions is undefined or empty');
       return;
     }
 
     // 确保偏移量的范围
-    const totalDuration = trackPositions.length ? trackPositions[trackPositions.length - 1].endTime : 0;
+    const totalDuration = this.state.currentBook?.totalDuration ?? 0;
     const targetTime = Math.min(Math.max(0, globalOffset), totalDuration);
     console.log(`<AudioBookReader.seekTo> globalOffset: ${globalOffset} (${targetTime})`);
     
@@ -262,13 +239,20 @@ class AudioBookReader {
   }
 
   /**
+   * Get current trak's playback time lively
+   * @returns 
+   */
+  public getCurrentTrackSeek() {
+    return this.audioManager.getCurrentTrackSeek();
+  }
+
+  /**
    * @returns 当前在全局时间轴上的位置（秒）
    */
-  private getCurrentGlobalOffset(): number {
-    const currentTrack = this.state.trackPositions?.find(
+  public getGlobalSeek(): number {
+    const currentTrack = this.state.currentBook?.trackPositions.find(
       track => track.trackIndex === this.state.currentTrackIndex
     );
-    
     if (!currentTrack) {
       return 0;
     }
@@ -283,10 +267,10 @@ class AudioBookReader {
    */
   public rewind(seconds: number = 10) {
     // this.audioManager.rewind(seconds);
-    const currentGlobalOffset = this.getCurrentGlobalOffset();
-    const targetOffset = currentGlobalOffset - seconds;
+    const currentGlobalSeek = this.getGlobalSeek();
+    const targetOffset = currentGlobalSeek - seconds;
     
-    console.log(`<Rewind> ${currentGlobalOffset}s -> ${targetOffset}s (${seconds}s back)`);
+    console.log(`<Rewind> ${currentGlobalSeek}s -> ${targetOffset}s (${seconds}s back)`);
     this.seekTo(targetOffset);
   }
 
@@ -294,10 +278,10 @@ class AudioBookReader {
    * @param seconds 向前跳转的秒数，默认 10 秒
    */
   public forward(seconds: number = 10) {
-    const currentGlobalOffset = this.getCurrentGlobalOffset();
-    const targetOffset = currentGlobalOffset + seconds;
+    const currentGlobalSeek = this.getGlobalSeek();
+    const targetOffset = currentGlobalSeek + seconds;
     
-    console.log(`<Forward> ${currentGlobalOffset}s -> ${targetOffset}s (${seconds}s forward)`);
+    console.log(`<Forward> ${currentGlobalSeek}s -> ${targetOffset}s (${seconds}s forward)`);
     this.seekTo(targetOffset);
   }
   

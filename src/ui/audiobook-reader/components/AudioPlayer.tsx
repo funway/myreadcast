@@ -1,6 +1,6 @@
 'use client';
 
-import React, { memo, useEffect, useMemo } from 'react';
+import React, { memo } from 'react';
 import { reader } from '@/lib/client/audiobook-reader';
 import { useReaderState } from '../hooks/useReaderState';
 import { formatTime } from '@/lib/client/utils';
@@ -13,17 +13,17 @@ type AudioPlayerProps = {
 };
 
 export const AudioPlayer = memo(({ className, showCloseButton = false }: AudioPlayerProps) => {
-    const { isPlaying, currentBook, currentTrackIndex, totalDuration, settings } = useReaderState(
+    const { isPlaying, currentBook, currentTrackIndex, settings } = useReaderState(
         (s) => ({
             isPlaying: s.isPlaying,
             currentBook: s.currentBook,
             currentTrackIndex: s.currentTrackIndex,
-            totalDuration: s.totalDuration,
             settings: s.settings.audioPlay,
         }),
         "AudioPalyer"
     );
     const playlist = currentBook?.playlist ?? [];
+    const totalDuration = currentBook?.totalDuration ?? 0;
     const currentTrackData = playlist[currentTrackIndex ?? 0];
     const trackTitle = currentTrackData?.title ?? `Track ${currentTrackIndex}`;
     

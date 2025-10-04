@@ -4,7 +4,7 @@ export type ActionResult<T = void> = {
   data?: T;
 };
 
-export interface AudioFileInfo {
+export type AudioFileInfo = {
   filePath: string;       // 文件路径
   duration: number;       // 秒数，解析失败的文件会被跳过
   mimeType?: string;      // 媒体类型，如 "audio/mpeg"
@@ -22,7 +22,7 @@ export interface AudioFileInfo {
   };
 }
 
-export interface PlaylistItem {
+export type PlaylistItem = {
   filePath: string;
   title: string;
   duration: number;

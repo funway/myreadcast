@@ -1,20 +1,20 @@
-// 会话用户信息接口 (非敏感信息)
-export interface SessionUser {
+// 会话用户信息 (非敏感信息)
+export type SessionUser = {
   id: string;
   username: string;
   role: string;
   image?: string | null;
-  [key: string]: unknown;
+  // [key: string]: unknown;
 }
 
-// Access Token Payload 接口
-export interface AccessTokenPayload extends SessionUser {
+// Access Token Payload 
+export type AccessTokenPayload = SessionUser & {
   exp: number;  // expire at
   iat: number;  // issued at
 }
 
-// Refresh Token Payload 接口
-export interface RefreshTokenPayload {
+// Refresh Token Payload
+export type RefreshTokenPayload = {
   id: string;
   token: string;
   exp: number;
@@ -28,7 +28,7 @@ export class AuthError extends Error {
   }
 }
 
-interface CookieOptions {
+type CookieOptions = {
   path?: string;
   maxAge?: number;
   httpOnly?: boolean;
