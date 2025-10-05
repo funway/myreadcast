@@ -5,7 +5,7 @@ export type ActionResult<T = void> = {
 };
 
 export type AudioFileInfo = {
-  filePath: string;       // 文件路径
+  filePath: string;       // 文件绝对路径 (非 URL encoding)
   duration: number;       // 秒数，解析失败的文件会被跳过
   mimeType?: string;      // 媒体类型，如 "audio/mpeg"
   bitrate?: number;       // 比特率 (bps)
@@ -23,11 +23,11 @@ export type AudioFileInfo = {
 }
 
 export type PlaylistItem = {
-  filePath: string;
-  title: string;
-  duration: number;
+  filePath: string;       // 文件绝对路径
+  title: string;          // 音频文件标题
+  duration: number;       // 音频文件时长
 }
 
-export type WithRelPath<T> = T & { relPath: string };  // relPath 是相对于有声书根目录的相对路径
+export type WithRelPath<T> = T & { relPath: string };  // relPath 是相对于有声书根目录的相对路径 (非 URL encoding)
 export type AudioFileInfoWithRel = WithRelPath<AudioFileInfo>;
 export type PlaylistItemWithRel = WithRelPath<PlaylistItem>;

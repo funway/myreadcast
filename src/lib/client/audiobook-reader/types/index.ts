@@ -1,4 +1,5 @@
-import { NavItem } from "epubjs";
+import { IframeView, NavItem } from 'epubjs';
+import Section from 'epubjs/types/section';
 
 export type BookType = 'epub' | 'audible_epub' | 'audios'
 
@@ -8,6 +9,7 @@ export type BookConfig = {
   title: string;
   path: string;         // 书籍的 URL 路径 (/api/book/[bookId])
   opfPath?: string;     // EPUB 的 OPF 文件路径 (/api/book/[bookId]/[...relPath])
+  smilPath?: string;    // SMIL 文件路径 (/api/book/[bookId]/[...relPath])
   coverPath?: string;   // 书籍封面的 URL 路径 (/api/book/[bookId]/cover)
   playlist: AudioTrack[];
   trackPositions: TrackPosition[];  // playlist 中每个 track 的全局开始结束时间
@@ -32,9 +34,9 @@ export type TrackPosition ={
  */
 export type SmilPar ={ 
   id?: string;        // Par id (optional)
-  textSrc: string;    // text 所在的文件路径
+  textSrc: string;    // text 所在的文件路径 (相对于 opf)
   textId: string;     // text 所在的标签 id
-  audioSrc: string;   // 对应的音频文件路径
+  audioSrc: string;   // 对应的音频文件路径 (相对于 opf)
   clipBegin: number;  // 对应的音频片段起始时间, 以秒为单位的浮点数 (小数为毫秒)
   clipEnd: number;    // 对应的音频片段结束时间, 以秒为单位的浮点数
 }
@@ -114,8 +116,7 @@ export type ReaderState = {
   
   currentHighlightId?: string;        
 
-  // Error state
-  // error?: { message: string; code?: string };
+  error?: { message: string; code?: string };
   debug_msg?: string;                 // 仅用于调试显示的消息
 }
 
@@ -132,4 +133,9 @@ export type ReaderEvents = {
   // 'audio-time-updated': { currentTime: number; totalDuration: number };
   // 'highlight-changed': { elementId: string };
   // 'error': { message: string; code?: string };
+}
+
+export type EpubEventListener = {
+  eventType: string;
+  eventHandler: (event: Event, section: Section, view: IframeView) => void;
 }

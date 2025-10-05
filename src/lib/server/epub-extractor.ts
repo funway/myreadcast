@@ -30,7 +30,7 @@ type SmilSeqElem = {
   par?: SmilParElem[];
 }
 
-interface SmilBodyElem {
+type SmilBodyElem = {
   seq?: SmilSeqElem[];
   par?: SmilParElem[];
 }
@@ -207,7 +207,7 @@ export class EpubExtractor {
       const parsed = await parser.parseStringPromise(xml);
       const rootfileElems = parsed.container.rootfiles[0].rootfile;
       if (rootfileElems && rootfileElems.length > 0) {
-        const opfPath = decodeURIComponent(rootfileElems[0].$['full-path']);
+        const opfPath = decodeURI(rootfileElems[0].$['full-path']);
         return path.join(extractDir, opfPath);
       }
     } catch (error) {
@@ -241,7 +241,7 @@ export class EpubExtractor {
       const mediaType = item.$['media-type'];
       if (mediaType && mediaType.startsWith('audio/')) {
         const href = item.$.href;
-        const audioPath = path.resolve(opfData.opfDir, decodeURIComponent(href));
+        const audioPath = path.resolve(opfData.opfDir, decodeURI(href));
         
         try {
           const audioInfo = await getAudioFileInfo(audioPath);
@@ -278,13 +278,27 @@ export class EpubExtractor {
       const smilItem = manifest.find(m => m.$.id === overlayId);
       if (!smilItem) continue;
 
-      const href = smilItem.$.href;
-      const smilPath = path.resolve(opfData.opfDir, decodeURIComponent(href));
+      // 获取 SMIL 文件的绝对路径
+      // href 是相对于 opf 的路径, 而且是 URL encoding 的
+      const smilHref = smilItem.$.href;  
+      const smilPath = path.resolve(opfData.opfDir, decodeURI(smilHref));
 
       // 4. 解析 SMIL 文件
       if (fs.existsSync(smilPath)) {
         const smilContent = await fsp.readFile(smilPath, 'utf8');
         const pars = await this.parseSmilContent(smilContent);
+        /**
+         * 从 SMIL 文件中解析出来的原始 par 中, src 是相对于该 SMIL 文件的相对路径 (也是 URL encoding 的)
+         * 我们需要根据 textSrc 和 audioSrc 的用途, 做对应的相对路径调整
+         */
+        const smilDir = path.dirname(smilPath);
+        for (const par of pars) {
+          // textSrc 需要改造成相对于 opf 文件的相对路径, 因为 Epub.js 的内部跳转是基于 opf 相对路径进行的
+          par.textSrc = path.relative(opfData.opfDir, path.resolve(smilDir, par.textSrc));
+          // audioSrc 需要改造成相对于有声书根目录(extractDir)的相对路径, 方便浏览器直接访问
+          par.audioSrc = path.relative(this.extractDir, path.resolve(smilDir, par.audioSrc));
+        }
+
         smilPars.push(...pars);
         logger.debug(`Parse SMIL file ${smilPath} - Got ${pars.length} pars`);
       } else {
@@ -392,7 +406,7 @@ export class EpubExtractor {
       const mediaType = item.$['media-type'] || '';
       
       if (mediaType.startsWith('image/') && (id.includes('cover') || href.includes('cover'))) {
-        const coverPath = path.resolve(opfData.opfDir, decodeURIComponent(item.$.href));
+        const coverPath = path.resolve(opfData.opfDir, decodeURI(item.$.href));
         if (fs.existsSync(coverPath)) {
           return coverPath;
         }

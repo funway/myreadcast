@@ -188,6 +188,7 @@ export async function serveFile(filePath: string, request: NextRequest, options:
     enableCompression = true,
     cacheControl = DEFAULT_CACHE_CONTROL
   } = options;
+  logger.debug(`[FileService] serveFile: ${filePath}`, { options });
 
   // 1. 验证路径安全性
   const validation = validateFilePath(filePath);

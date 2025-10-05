@@ -97,7 +97,6 @@ export class AudioManager {
           } else {
             this.updateState({ isPlaying: false, debug_msg: 'Howl onend fired' });
             this.pause();
-            this.stopProgressTracking();
           }
         },
       });
@@ -107,16 +106,18 @@ export class AudioManager {
       this.safeSeek(offset);
     }
 
-    this.updateState({
-      currentTrackIndex: trackIndex,
-      ...(offset !== undefined ? { currentTrackTime: offset } : {})
-    });
-
     if (play) {
       this.play();
     } else {
       this.pause();
     }
+
+    this.updateState({
+      currentTrackIndex: trackIndex,
+      ...(offset !== undefined ? { currentTrackTime: offset } : {}),
+      isPlaying: play,
+      debug_msg: 'setTrack'
+    });
   }
 
   /**
@@ -147,7 +148,8 @@ export class AudioManager {
         this.updateState({
           currentTrackIndex: this.currentTrackIndex,
           currentTrackTime: this.sound?.seek(),
-          debug_msg: '<AudioManager> Progress tracking update',
+          isPlaying: true,
+          // debug_msg: '<AudioManager> Progress tracking update',
         });
 
         // 设置下一次 tracking
@@ -180,6 +182,8 @@ export class AudioManager {
 
     if (this.soundId === null) {
       this.soundId = this.sound.play();
+    } else if (this.sound.playing(this.soundId)) {
+      return;
     } else {
       this.sound.play(this.soundId);
     }
@@ -224,8 +228,7 @@ export class AudioManager {
   public forward(seconds: number) {
       if (!this.sound) return;
       const current = this.sound.seek() || 0;
-      const duration = this.sound.duration() || 0;
-      this.safeSeek(Math.min(current + seconds, duration));
+      this.safeSeek(current + seconds);
   }
 
   public rewind(seconds: number) {
@@ -235,22 +238,29 @@ export class AudioManager {
   }
 
   /**
-   * Seek to a specific playback position.
-   *
+   * Safely seek to a specific playback position.
+   * 
+   * 1. 在 sound 处于 unplaying 状态下 seek 的话，是不会生效的
+   * 
+   * 2. seek 到 duration 边界(大概是 -100ms)的时候有一个 race condition. 非常坑人   
+   * 如果正在播放状态 seek 到这个边界. Howl 可能认为已经到结尾了, 会自动调用 stop 并触发 onend 事件, 还可能直接跳过 stop 重头开始播放...
    * @param time Playback position in seconds (float).
    */
   private safeSeek(time: number) {
     if (!this.sound) {
-      console.error('<AudioManager.seek> No track loaded');
+      console.error('<AudioManager.safeSeek> No track loaded');
       return;
     }
     if (this.sound.playing()) {
-      const dur = this.sound.duration();  // 如果 sound 未加载完，duration 可能为 0, 所以要在 playing() 之后调用
-      console.log(`<AudioManager.seek> Seek to ${time} / ${dur}`);
-      const safeTime = Math.max(0, Math.min(time, dur));
+      // 如果 sound 未加载完，duration 可能为 0, 所以要在 playing() 之后调用
+      const dur = this.sound.duration();
+      console.log(`<AudioManager.safeSeek> Seek to ${time} / ${dur}`);
+      
+      // 设置 safeTime 防止结尾边界的异常情况
+      const safeTime = Math.max(0, Math.min(time, dur - 0.11));
       this.sound.seek(safeTime, this.soundId!);
     } else {
-      console.log('<AudioManager.seek> Track not playing, set pending seek to', time);
+      console.log('<AudioManager.safeSeek> Track not playing, set pending seek to', time);
       this.pendingSeek = time;
     }
   }

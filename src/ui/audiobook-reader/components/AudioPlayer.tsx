@@ -31,8 +31,8 @@ export const AudioPlayer = memo(({ className, showCloseButton = false }: AudioPl
         isPlaying,
         currentBook,
         currentTrackIndex,
-        playlist,
         totalDuration,
+        playlist,
         settings,
     });
     

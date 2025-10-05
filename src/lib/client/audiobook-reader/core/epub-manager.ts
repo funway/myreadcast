@@ -1,8 +1,8 @@
-import Epub, { Book, Rendition, Location, NavItem } from 'epubjs';
-import { EpubViewSettings, StateUpdater } from '../types';
+import Epub, { Book, Rendition, Location, NavItem, IframeView, Contents } from 'epubjs';
+import { EpubViewSettings, StateUpdater, EpubEventListener } from '../types';
 import { getAppColors } from '../utils';
 import Section from 'epubjs/types/section';
-
+    
 export class EpubManager {
   private updateState: StateUpdater;
 
@@ -33,7 +33,9 @@ export class EpubManager {
       
       await this.book.ready;
       console.log('<EpubManager.load> EPUB book loaded successfully.');
-      // (window as any).book = this.book;  // 挂载 book 对象到浏览器 window, 方便调试
+      if (process.env.NODE_ENV === 'development') {
+        (window as any).book = this.book;  // 挂载 book 对象到浏览器 window, 方便调试
+      }
       
       const N = 512;
       this.book.locations.generate(N).then(() => { 
@@ -49,7 +51,11 @@ export class EpubManager {
     }
   }
 
-  public attachTo(element: HTMLElement, settings: EpubViewSettings) {
+  public attachTo(
+    element: HTMLElement,
+    settings: EpubViewSettings,
+    eventListeners?: EpubEventListener[])
+  {
     if (!this.book || !element) {
       console.error('Book not loaded or element not provided to attachTo.');
       return;
@@ -60,39 +66,56 @@ export class EpubManager {
       width: '100%',
       height: '100%',
       spread: 'auto',
-      // manager: 'continuous',
+      // manager: 'default',  // default 一次只显示一个章节 | continuous 连续章节
+      flow: 'paginated',  // paginated 左右分页阅读 | scrolled-doc 上下滚动阅读 | auto 根据 opf 文件中定义, 默认左右分页
       allowScriptedContent: true,
     });
     this.applySettings(settings);
     this.rendition.display();
 
-    // 2. Listen to location changes to update page numbers
+    // 2. Listen to location changes to update page numbers (翻页事件)
     this.rendition.on('relocated', (location: Location) => {
+      const href = location.start.href;
       const cfi = location.start.cfi;
       const percentage = this.book?.locations.percentageFromCfi(cfi) ?? 0;
-      console.log("<EpubManager - epub.js> relocated:", location, cfi, percentage);
+      console.log(`<EpubManager - epub.js> relocated: ${href}, ${cfi}, ${percentage}%`, location);
+
       this.updateState({ currentCfi: cfi });
     });
 
-    // 3. Listen to rendered event to inject event handler into iframe
-    interface IframeView {
-      document: Document;
-    }
-    this.rendition.on("rendered", (section: Section, view: IframeView) => {
+    // 3. Listen to rendered event to inject event handler into iframe (iframe 载入事件)
+    this.rendition.on('rendered', (section: Section, view: IframeView) => {
       console.log("<EpubManager - epub.js> rendered:", section, view);
 
       view.document.addEventListener('dblclick', function (event: MouseEvent) {
-        console.log("<EpubManager> dbclick event in iframe");
+        console.log("<EpubManager - iframe> dbclick event in iframe.", event.target,
+          " section:", section,
+          " view:", view
+        );
         // event.preventDefault();
-        const target = event.target as Node;
-        const el = target.nodeType === 3
-          ? (target.parentNode as HTMLElement)
-          : (target as HTMLElement);
+        // const target = event.target as Node;
+        // const el = target.nodeType === 3
+        //   ? (target.parentNode as HTMLElement)
+        //   : (target as HTMLElement);
+        // console.log("双击文本:", el.textContent);
+        // console.log("元素 id:", el.id);
 
-        console.log("双击文本:", el.textContent);
-        console.log("元素 id:", el.id);
-        console.log("当前文件:", section);
       });
+      
+      // 注入自定义事件监听器
+      if (eventListeners && eventListeners.length > 0) {
+        eventListeners.forEach(({ eventType, eventHandler }) => {
+          view.document.addEventListener(eventType, (e) => {
+            eventHandler(e, section, view);
+          });
+        });
+      }
+
+    });
+
+    // 4. iframe 内文字选中事件
+    this.rendition.on('selected', (cfiRange: string, contents: Contents) => {
+      console.log("<EpubManager - epub.js> selected:", cfiRange, contents);
     });
   }
 
@@ -123,6 +146,7 @@ export class EpubManager {
     
     try {
       await this.rendition.display(href);
+      // rendition.display("Text/Chapter%201.xhtml#ae00293");
     } catch (error) {
       console.error('Error navigating to TOC item:', error);
     }
@@ -136,6 +160,7 @@ export class EpubManager {
     
     try {
       await this.rendition.display(cfi);
+      // rendition.display("epubcfi(/6/10!/4/2/102/2/2[ae00293],/1:0,/1:5)");
     } catch (error) {
       console.error('Error navigating to CFI:', error);
     }
@@ -147,6 +172,21 @@ export class EpubManager {
 
   public prevPage() {
     this.rendition?.prev();
+  }
+
+  public getCurrentLocation() {
+    return this.rendition?.currentLocation();
+  }
+
+  public hightlightText(textSrc: string, textId: string) { 
+    console.log(`<EpubManager.hightlightText> ${textSrc}#${textId}`);
+    if (!this.rendition || !this.book) {
+      console.warn('<EpubManager.hightlightText> rendition or book not ready');
+      return;
+    }
+
+    const views = this.rendition.views();
+
   }
 
   public applySettings(settings: EpubViewSettings) {
@@ -165,6 +205,11 @@ export class EpubManager {
       'body': {
         'font-size': `${settings.fontSize}% !important`,
         'background': `${themeColors.background} !important`,
+      },
+      '.smil-highlight': {
+        'background-color': 'rgba(255, 255, 0, 0.3) !important',
+        'transition': 'background-color 0.3s ease !important',
+        'box-shadow': '0 0 8px rgba(255, 255, 0, 0.4) !important',
       },
     };
 

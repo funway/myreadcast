@@ -62,7 +62,7 @@ export function createBookConfig(bookData: Book): BookConfig {
   const rawPlaylist = bookData.playlist as PlaylistItemWithRel[] | undefined;
   const playlist = rawPlaylist ? rawPlaylist.map(track => ({
     title: track.title,
-    path: `${urlPath}/${track.relPath}`,
+    path: `${urlPath}/${encodeURI(track.relPath)}`,
     duration: track.duration,
   })) : [];
   
@@ -81,7 +81,8 @@ export function createBookConfig(bookData: Book): BookConfig {
     title: bookData.title,
     path: urlPath,
     
-    opfPath: bookData.opf ? `${urlPath}/${bookData.opf}` : undefined,
+    opfPath: bookData.opf ? `${urlPath}/${encodeURI(bookData.opf)}` : undefined,
+    smilPath: bookData.smil ? `${urlPath}/${encodeURI(bookData.smil)}` : undefined,
     coverPath: bookData.coverPath ? `${urlPath}/cover` : undefined,
     
     playlist,
