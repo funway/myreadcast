@@ -1,80 +1,74 @@
 'use client';
 
 import { reader } from '@/lib/client/audiobook-reader';
-import { ClientStatesStore } from '@/lib/client/store';
 import { useClientStatesStore } from '@/ui/contexts/StoreContext';
 import { toast } from 'react-toastify';
 import { EpubViewer } from '../audiobook-reader/components/EpubViewer';
+import ePub, { Book, Rendition } from 'hawu-epubjs';
+import { useRef, useState } from 'react';
 
 export default function TestUI() {
   const { sessionUser, setSessionUser, count, increaseCount } = useClientStatesStore();
   console.log('[TestUI]', 'count = ', count);
+  console.log(Object.keys(Rendition));
+
+  const [book, setBook] = useState<Book | null>(null);
+  const viewerRef = useRef<HTMLDivElement>(null);
+  
   const handleClick = () => {
     // 使用 ClientStates.count 的其他组件也会刷新
     increaseCount();
     toast.info("Wow so easy! " + count);
   }
+
+  const handleToggleBook = async () => {
+    if (book) {
+      // --- 销毁逻辑 ---
+      console.log('[TestUI] Destroying book...');
+      try {
+        book.rendition.q.clear();
+        book.rendition.clear();
+        book.rendition.destroy();
+        book.destroy();
+      } catch (e) {
+        console.warn('Error destroying book:', e);
+      }
+      setBook(null);
+      if (viewerRef.current) {
+        viewerRef.current.innerHTML = '';
+      }
+      toast.info('Book closed and destroyed.');
+      return;
+    }
+
+    // --- 创建逻辑 ---
+    console.log('[TestUI] Opening book...');
+    const newBook = ePub('/books/hp-fire/OEBPS/content.opf');
+    const newRendition = newBook.renderTo(viewerRef.current!, {
+      width: '100%',
+      height: '600px',
+      spread: 'auto',
+      allowScriptedContent: true,
+    });
+
+    await newRendition.display();
+    setBook(newBook);
+    toast.success('Book opened.');
+  };
   
   return (
     <>
+      <button className="btn btn-primary" onClick={handleToggleBook}>
+        {book ? 'Close Book' : 'Open Book'}
+      </button>
+
+      <div
+        ref={viewerRef}
+        id="viewer"
+        className="w-full border border-gray-300 rounded-lg overflow-hidden"
+      ></div>
+
       <div className='flex flex-col gap-4'>
-        <button
-        className ="btn btn-primary"
-          onClick={() =>
-            reader.open({
-              type: 'audios', // 我们可以先用 epub 类型测试
-              path: '/books/hp-fire/OEBPS/audio', // 使用我们规划的测试路径
-              title: '纯音频',
-              playlist: [
-                { path: "/books/hp-fire/OEBPS/audio/aud_0.mp3", duration: 120 },
-                { path: "/books/hp-fire/OEBPS/audio/aud_1.mp3", duration: 104 },
-                { path: "/books/hp-fire/OEBPS/audio/aud_2.mp3", duration: 1436 },
-              ],
-            })
-          }
-        >
-          Only Audios
-        </button>
-
-        <button
-        className ="btn btn-primary"
-          onClick={() =>
-            reader.open({
-              type: 'audible_epub', // 我们可以先用 epub 类型测试
-              path: '/books/hp-fire/OEBPS/content.opf', // 使用我们规划的测试路径
-              title: '测试书籍: epub + audios',
-            })
-          }
-        >
-          Audible EPUB
-        </button>
-
-        <button
-        className ="btn btn-primary"
-          onClick={() =>
-            reader.open({
-              type: 'epub', // 我们可以先用 epub 类型测试
-              path: '/books/oldman.epub', // 使用我们规划的测试路径
-              title: '测试书籍：打开与关闭功能',
-            })
-          }
-        >
-          Plain EPUB
-        </button>
-
-        <button
-        className ="btn btn-primary"
-          onClick={() =>
-            reader.open({
-              type: 'epub', // 我们可以先用 epub 类型测试
-              path: '/books/chamber/OEBPS/content.opf', // 使用我们规划的测试路径
-              title: '测试书籍：打开与关闭功能',
-            })
-          }
-        >
-          Plain EPUB (unzipped)
-        </button>
-        
         <div className='divider'></div>
         <button className="btn" onClick={ handleClick }>
           One up <div className="badge badge-sm">{count}</div>

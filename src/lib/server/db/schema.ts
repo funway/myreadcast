@@ -69,8 +69,8 @@ export const ReadingProgressTable = sqliteTable('reading_progress', {
   id: text('id').primaryKey(),
   userId: text('user_id').notNull(),
   bookId: text('book_id').notNull(),
-  progress: real('progress').notNull().default(0),
-  position: text('position', { mode: 'json' }),
+  epubProgress: text('epub_progress', { mode: 'json' }),    // {cfi, progress}
+  audioProgress: text('audio_progress', { mode: 'json' }),  // {trackIndex, trackSeek, progress}
   ...timestamps,
 });
 

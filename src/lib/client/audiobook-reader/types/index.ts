@@ -1,5 +1,4 @@
-import { IframeView, NavItem } from 'epubjs';
-import Section from 'epubjs/types/section';
+import { NavItem } from 'hawu-epubjs';
 
 export type BookType = 'epub' | 'audible_epub' | 'audios'
 
@@ -36,43 +35,22 @@ export type SmilPar ={
   id?: string;        // Par id (optional)
   textSrc: string;    // text 所在的文件路径 (相对于 opf)
   textId: string;     // text 所在的标签 id
-  audioSrc: string;   // 对应的音频文件路径 (相对于 opf)
+  audioSrc: string;   // 对应的音频文件路径 (相对于整个有声书的目录)
   clipBegin: number;  // 对应的音频片段起始时间, 以秒为单位的浮点数 (小数为毫秒)
   clipEnd: number;    // 对应的音频片段结束时间, 以秒为单位的浮点数
 }
 
-// export interface ReadingProgress {
-//   bookPath: string;
-//   epubCfi?: string;   // EPUB的位置标识
-//   audioTime?: number; // 基于总播放时长的时间位置
-//   chapterIndex?: number;
-//   lastReadAt: Date;
-// }
-
-// 播放列表信息（用于音频进度条计算）
-// export interface PlaylistInfo {
-//   tracks: AudioInfo[];
-//   totalDuration: number;
-//   trackPositions: Array<{
-//     startTime: number;
-//     endTime: number; 
-//     trackIndex: number;
-//   }>;
-// }
-
-// SMIL 同步数据结构
-// export interface SmilSegment {
-//   id: string;
-//   textSrc: string; // 对应的 HTML 元素 ID
-//   audioSrc: string;
-//   clipBegin: number; // 秒数
-//   clipEnd: number;   // 秒数
-// }
-
-// export interface SmilData {
-//   segments: SmilSegment[];
-//   audioFiles: string[]; // 所有音频文件列表
-// }
+export type ReadingProgress = {
+  epub?: {
+    cfi: string;        // epub.js 当前渲染页面的 start location
+    progress?: number;  // float 进度百分比
+  },
+  audio?: {
+    trackIndex: number, // 当前播放的 track index
+    trackSeek: number,  // 当前播放的 track 的时间点
+    progress?: number   // float 进度百分比
+  }
+}
 
 export const KEYBOARD_SHORTCUTS = {
   'ArrowLeft': 'prevPage',
@@ -92,10 +70,12 @@ export type EpubViewSettings = {
 }
 
 export type AudioPlaySettings = {
-  volume: number;
-  playbackRate: number;
-  autoPlay: boolean;
-  continuousPlay: boolean;
+  volume: number;           // 音量
+  playbackRate: number;     // 倍速播放
+  autoPlay: boolean;        // 是否自动播放
+  continuousPlay: boolean;  // 是否连续播放
+  syncHighlight: boolean;   // 是否同步高亮 EPUB 文字
+  syncPage: boolean;        // 是否同步跳转 EPUB 页面
 }
 
 export type ReaderSettings = {
@@ -111,10 +91,8 @@ export type ReaderState = {
   currentBook: BookConfig | null;     // 书籍信息
   toc?: NavItem[];                    // EPUB 目录
   currentCfi?: string;                // 当前的 EPUB CFI (阅读进度)
-  currentTrackIndex?: number;         // 当前选中的 track idx
+  currentTrackIndex?: number;         // 当前 track 在 playlist 中的 idx
   currentTrackTime?: number;          // 当前 track 播放的时间点 (播放进度)
-  
-  currentHighlightId?: string;        
 
   error?: { message: string; code?: string };
   debug_msg?: string;                 // 仅用于调试显示的消息
@@ -125,9 +103,13 @@ export type ReaderState = {
  */
 export type StateUpdater = (updates: Partial<ReaderState>) => void;
 
+/**
+ * event key
+ */
 export type ReaderEvents = {
   'state-changed': ReaderState;
   'book-loaded': BookConfig;
+  'epub-dblclick': { textSrc: string, textId: string };
   // 'progress-updated': { cfi?: string; audioTime?: number };
   // 'page-changed': { page: number; totalPages: number };
   // 'audio-time-updated': { currentTime: number; totalDuration: number };
@@ -135,7 +117,12 @@ export type ReaderEvents = {
   // 'error': { message: string; code?: string };
 }
 
-export type EpubEventListener = {
-  eventType: string;
-  eventHandler: (event: Event, section: Section, view: IframeView) => void;
-}
+export type ReaderEventEmitter = <Key extends keyof ReaderEvents>(
+    type: Key,
+    event: ReaderEvents[Key]
+  ) => void;
+
+// export type EpubEventListener = {
+//   eventType: string;
+//   eventHandler: (event: Event, section: Section, view: IframeView) => void;
+// }

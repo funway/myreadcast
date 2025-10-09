@@ -1,10 +1,11 @@
-import Epub, { Book, Rendition, Location, NavItem, IframeView, Contents } from 'epubjs';
-import { EpubViewSettings, StateUpdater, EpubEventListener } from '../types';
+import { EpubViewSettings, ReaderEventEmitter, StateUpdater } from '../types';
+import Epub, { Book, Rendition, Location, NavItem, View, Contents } from 'hawu-epubjs';
+import Section from 'hawu-epubjs/types/section';
 import { getAppColors } from '../utils';
-import Section from 'epubjs/types/section';
     
 export class EpubManager {
   private updateState: StateUpdater;
+  private emit: ReaderEventEmitter;
 
   /**
    * Book instance from Epub.js
@@ -15,33 +16,43 @@ export class EpubManager {
    * Rendition instance (EPUB render) from Epub.js
    */
   private rendition: Rendition | null = null;
-
+  
   /**
    * epub.js 的 Locations 对象是否准备完毕 (异步加载，不等待)
    */
   private locationsReady: boolean = false;
 
-  constructor(updateState: StateUpdater) {
+  constructor(updateState: StateUpdater, emit: ReaderEventEmitter) {
     this.updateState = updateState;
+    this.emit = emit;
   }
 
   public async load(url: string) {
     try {
-      this.destroy(); // Clean up previous book instance
+      this.destroy();
+
       this.book = Epub(url);
       console.log('<EpubManager.load> Loading EPUB from:', url);
       
       await this.book.ready;
       console.log('<EpubManager.load> EPUB book loaded successfully.');
+
       if (process.env.NODE_ENV === 'development') {
-        (window as any).book = this.book;  // 挂载 book 对象到浏览器 window, 方便调试
+        (window as Window & { book?: Book | null }).book = this.book;  // 挂载 book 对象到浏览器 window, 方便调试
       }
       
       const N = 512;
-      this.book.locations.generate(N).then(() => { 
-        console.log('<EpubManager.load> EPUB locations generated', this.book!.locations);
+      this.book.locations.generate(N).then(() => {
+        /**
+         * 计算 locations 需要加载全部 EPUB spine 中的章节, 所以是一个耗时的异步过程
+         * 在计算完成之前，locations.percentageFromCfi() 函数会返回 null
+         * 
+         * Locations 对象不能直接被 JSON stringify，所以不能保存到 ReaderState 中, 也就不好保存到数据库里
+         * 所以我们暂时是每次都要重新计算 locations
+         */
+        
         this.locationsReady = true;
-        // Locations 对象不能直接被 JSON stringify，所以不能保存到 ReaderState 中
+        // console.log('<EpubManager.load> EPUB locations generated', this.book!.locations);
       });
       
       this.updateState({ toc: this.getToc() });
@@ -51,10 +62,7 @@ export class EpubManager {
     }
   }
 
-  public attachTo(
-    element: HTMLElement,
-    settings: EpubViewSettings,
-    eventListeners?: EpubEventListener[])
+  public attachTo(element: HTMLElement, settings: EpubViewSettings)
   {
     if (!this.book || !element) {
       console.error('Book not loaded or element not provided to attachTo.');
@@ -66,7 +74,7 @@ export class EpubManager {
       width: '100%',
       height: '100%',
       spread: 'auto',
-      // manager: 'default',  // default 一次只显示一个章节 | continuous 连续章节
+      // manager: 'continuous',  // default 一次只显示一个章节 | continuous 连续章节
       flow: 'paginated',  // paginated 左右分页阅读 | scrolled-doc 上下滚动阅读 | auto 根据 opf 文件中定义, 默认左右分页
       allowScriptedContent: true,
     });
@@ -77,45 +85,37 @@ export class EpubManager {
     this.rendition.on('relocated', (location: Location) => {
       const href = location.start.href;
       const cfi = location.start.cfi;
-      const percentage = this.book?.locations.percentageFromCfi(cfi) ?? 0;
-      console.log(`<EpubManager - epub.js> relocated: ${href}, ${cfi}, ${percentage}%`, location);
+      const percentage = this.book?.locations.percentageFromCfi(cfi) ?? 0;  // 在 locations 还没准备好时，percentageFromCfi 会返回 null
+      console.log(`<EpubManager> epub.js, Rendition event, relocated: ${href}, ${cfi}, ${percentage}%`, location);
 
       this.updateState({ currentCfi: cfi });
     });
 
     // 3. Listen to rendered event to inject event handler into iframe (iframe 载入事件)
-    this.rendition.on('rendered', (section: Section, view: IframeView) => {
-      console.log("<EpubManager - epub.js> rendered:", section, view);
-
-      view.document.addEventListener('dblclick', function (event: MouseEvent) {
-        console.log("<EpubManager - iframe> dbclick event in iframe.", event.target,
+    this.rendition.on('rendered', (section: Section, view: View) => {
+      console.log("<EpubManager> epub.js, Rendition evnet, rendered:", section, view);
+      
+      view.document!.addEventListener('dblclick', (event: MouseEvent) => {
+        console.log("<EpubManager> epub.js, Rendition, View event, dbclick event in view.document.", event.target,
           " section:", section,
           " view:", view
         );
         // event.preventDefault();
-        // const target = event.target as Node;
-        // const el = target.nodeType === 3
-        //   ? (target.parentNode as HTMLElement)
-        //   : (target as HTMLElement);
-        // console.log("双击文本:", el.textContent);
-        // console.log("元素 id:", el.id);
-
+        const target = event.target as Node;
+        const el = target.nodeType === 3
+          ? (target.parentNode as HTMLElement)
+          : (target as HTMLElement);
+        const textSrc = section.href;
+        const textId = el.id;  // 没有 id 则返回空字符串 
+        console.log(`<EpubManager> dblclick on ${textSrc}#${textId}`);
+        
+        this.emit('epub-dblclick', { textSrc, textId });
       });
-      
-      // 注入自定义事件监听器
-      if (eventListeners && eventListeners.length > 0) {
-        eventListeners.forEach(({ eventType, eventHandler }) => {
-          view.document.addEventListener(eventType, (e) => {
-            eventHandler(e, section, view);
-          });
-        });
-      }
-
     });
 
     // 4. iframe 内文字选中事件
     this.rendition.on('selected', (cfiRange: string, contents: Contents) => {
-      console.log("<EpubManager - epub.js> selected:", cfiRange, contents);
+      console.log("<EpubManager> epub.js, Rendition event, selected:", cfiRange, contents);
     });
   }
 
@@ -126,11 +126,15 @@ export class EpubManager {
   }
 
   public destroy() {
-    if (this.book) {
-      this.book.destroy();
+    if (process.env.NODE_ENV === 'development') {
+      (window as Window & { book?: Book | null }).book = null;
     }
-    this.book = null;
+
+    if (this.book) {
+      this.book.destroy();  // book.destroy() 自行注销内部的 rendition, packaging, spine 等对象
+    }
     this.rendition = null;
+    this.book = null;
     this.locationsReady = false;
   }
 
@@ -178,14 +182,18 @@ export class EpubManager {
     return this.rendition?.currentLocation();
   }
 
-  public hightlightText(textSrc: string, textId: string) { 
-    console.log(`<EpubManager.hightlightText> ${textSrc}#${textId}`);
+  public highlightText(textSrc: string, textId: string) { 
+    console.log(`<EpubManager.highlightText> ${textSrc}#${textId}`);
     if (!this.rendition || !this.book) {
-      console.warn('<EpubManager.hightlightText> rendition or book not ready');
+      console.warn('<EpubManager.highlightText> rendition or book not ready');
       return;
     }
 
     const views = this.rendition.views();
+
+  }
+
+  public clearHighlight() { 
 
   }
 

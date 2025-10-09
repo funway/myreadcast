@@ -11,8 +11,7 @@ import { useReaderState } from '../hooks/useReaderState';
 import { formatTime } from '@/lib/client/utils';
 
 export const AudioProgressBar = memo(() => {
-  const { isPlaying, currentBook, currentTrackIndex, currentTrackTime} = useReaderState((s) => ({
-    isPlaying: s.isPlaying,
+  const { currentBook, currentTrackIndex, currentTrackTime} = useReaderState((s) => ({
     currentBook: s.currentBook,
     currentTrackIndex: s.currentTrackIndex,
     currentTrackTime: s.currentTrackTime,

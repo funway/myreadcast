@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { NavItem } from 'epubjs';
+import { NavItem } from 'hawu-epubjs';
 import { reader } from '@/lib/client/audiobook-reader';
 import { useReaderState } from '../hooks/useReaderState';
 import MyIcon from '@/ui/MyIcon';

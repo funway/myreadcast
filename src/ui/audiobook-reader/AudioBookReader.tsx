@@ -18,7 +18,7 @@ export function AudioBookReader() {
 
   useEffect(
     () => {
-      console.log('[AudioBookReader] calls useEffect');
+      console.log('[AudioBookReader] calls useEffect. isOpen:', isOpen);
       
       if (!isOpen) {
         return; 

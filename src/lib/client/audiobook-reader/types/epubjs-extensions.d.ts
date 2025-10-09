@@ -1,6 +1,18 @@
 /**
  * TypeScript type extensions for Epub.js
- * The original type definitions are incomplete 😮‍💨...
+ * 😮‍💨 Epub.js 实在太拉了。。。 
+ * - 首先是 ts 类型导出不完整！
+ * - 然后是太多全局事件回调没有清理导致内存泄漏！
+ *  我现在查到的就有两个: getEventListeners(window) ==> 
+ *    orientationchange 事件, unload 事件都绑定了 ViewManager 对象, resize 事件倒是清理干净了。。。
+ *    这就会导致，即使调用了 Book.destroy(). 但是 Book 包含 Rendition, Rendition 包含 ViewManager, 
+ *    结果 ViewManager 被全局 window 保持在事件的回调闭包中，导致大家都无法被销毁。。。
+ *  所以，我们需要给两个类打补丁:
+ *    DefaultViewManager 类的 addEventListeners() 方法和 removeEventListeners() 方法
+ *    Stage 类的 destroy() 方法
+ *  
+ * 我把我们打补丁的版本上传到了 https://www.npmjs.com/package/hawu-epubjs
+ * 本文件只用来做类型声明的补充
  */
 
 /**
@@ -28,31 +40,37 @@
  */
 
 
-import 'epubjs';
-import Container from "epubjs/types/container";
-import View from "epubjs/types/managers/view";
-import Section from "epubjs/types/section";
+import 'hawu-epubjs';
+import Section from 'hawu-epubjs/types/section';
 
-declare module "epubjs" {
-  /** 增加 IframeView 类型 */ 
-  interface IframeView extends View {
-    document: Document;
+/**
+ * ===== 增强类型声明 =====
+ */
+declare module "hawu-epubjs" {
+  /** 修改 View 类型声明 */
+  interface View {
+    document?: Document;
+    window?: Window;
   }
+  /**
+   * View 派生了两个类: IframeView 和 InlineView
+   * 对于 IframeView 来说，它的 document 和 window 就是指 iframe 自己的，与主文档的 document, window 不同.
+   * 对于 InlineView 来说，它的 document 和 window 就是主文档的 document 和 window. 它没有用 iframe.
+   * 但实际上, epub.js v0.3.93 只用到了 IframeView, 并没有使用 InlineView!
+   */
 
-  /** 增加 Views 类型 */
+  /** 增加 Views 类型声明 */
   interface Views {
     container: Container;
-    _views: IframeView[];
+    _views: View[];
     length: number;
     hidden: boolean;
     
-    first(): IframeView | undefined;
-    last(): IframeView | undefined;
-    indexOf(view: IframeView): number;
-    slice(...args: any[]): IframeView[];
-    get(i: number): IframeView | undefined;
-    find(section: Section): IframeView | undefined;
-    displayed(): IframeView[];
+    all(): View[];
+    displayed(): View[];
+    indexOf(view: View): number;
+    get(i: number): View | undefined;
+    find(section: Section): View | undefined;
   }
 
   /** 修改 Rendition.views() 的返回类型 */

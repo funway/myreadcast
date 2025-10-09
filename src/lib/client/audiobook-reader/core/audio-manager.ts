@@ -1,11 +1,11 @@
 import { Howl, Howler } from 'howler';
-import { AudioTrack, AudioPlaySettings, StateUpdater } from '../types';
-import { set } from 'zod';
+import { AudioTrack, AudioPlaySettings, StateUpdater, ReaderEventEmitter } from '../types';
 
 const PROGRESS_TRACKING_INTERVAL = 200;
 
 export class AudioManager {
   private updateState: StateUpdater;
+  private emit: ReaderEventEmitter;
   private playlist: AudioTrack[] = [];
   private sound: Howl | null = null;
   private soundId: number | null = null;
@@ -15,8 +15,9 @@ export class AudioManager {
   private progressTracking: number | null = null;
   private playbackRate: number = 1;
   
-  constructor(updateState: StateUpdater) {
+  constructor(updateState: StateUpdater, emit: ReaderEventEmitter) {
     this.updateState = updateState;
+    this.emit = emit;
   }
 
   public loadPlaylist(playlist: AudioTrack[]) {

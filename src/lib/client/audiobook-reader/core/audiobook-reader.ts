@@ -13,7 +13,6 @@ import {
 import { EpubManager } from './epub-manager';
 import { AudioManager } from './audio-manager';
 import { SmilManager } from './smil-manager';
-import Section from 'epubjs/types/section';
 
 const SETTINGS_KEY = 'myreadcast-reader-settings';
 const DEFAULT_READER_SETTINGS: ReaderSettings = {
@@ -21,13 +20,16 @@ const DEFAULT_READER_SETTINGS: ReaderSettings = {
     fontFamily: 'sans-serif',
     fontSize: 100,
     lineHeight: 1.5,
-  },
+  } as EpubViewSettings,
+
   audioPlay: {
     volume: 1,
     playbackRate: 1,
     autoPlay: false,
     continuousPlay: true,
-  }
+    syncHighlight: true,
+    syncPage: true,
+  } as AudioPlaySettings,
 };
 
 const loadReaderSettings = (): ReaderSettings => {
@@ -69,9 +71,11 @@ class AudioBookReader {
 
   private constructor() {
     this.state = this.getInitialState();
-    this.epubManager = new EpubManager(this.updateState.bind(this));
-    this.audioManager = new AudioManager(this.updateState.bind(this));
+    this.epubManager = new EpubManager(this.updateState.bind(this), this.emit.bind(this));
+    this.audioManager = new AudioManager(this.updateState.bind(this), this.emit.bind(this));
     this.smilManager = new SmilManager(this.updateState.bind(this));
+
+    this.on('epub-dblclick', this.onEpubDblclick.bind(this));
   }
 
   private getInitialState(): ReaderState {
@@ -79,11 +83,7 @@ class AudioBookReader {
       isOpen: false,
       isPlaying: false,
       settings: loadReaderSettings(),
-      
       currentBook: null,
-      // currentCfi?: string;              // 当前的 EPUB CFI (阅读进度)
-      // currentTrack?: number;            // 当前选中的 track idx
-      // currentTrackTime?: number;        // 当前 track 播放的时间点 (播放进度)
     };
   }
 
@@ -202,8 +202,7 @@ class AudioBookReader {
 
   public close() {
     if (!this.state.isOpen) return;
-
-    console.log('<AudioBookReader> Closing reader.');
+    console.log('<AudioBookReader> Closing reader');
     this.epubManager.destroy();
     this.audioManager.destroy();
     this.smilManager.destroy();
@@ -358,13 +357,7 @@ class AudioBookReader {
 
   public attachView(element: HTMLElement) {
     if (this.state.currentBook?.type === 'epub' || this.state.currentBook?.type === 'audible_epub') {
-      this.epubManager.attachTo(
-        element,
-        this.state.settings.epubView,
-        [
-          { eventType: 'dblclick', eventHandler: this.handleEpubDblclick.bind(this) }
-        ]
-      );
+      this.epubManager.attachTo(element, this.state.settings.epubView);
     }
   }
 
@@ -372,20 +365,13 @@ class AudioBookReader {
     this.epubManager.detach();
   }
 
-  public handleEpubDblclick(event: Event, section: Section) {
-    console.log("<reader.handleEpubDblclick> dbclick event in iframe.", event.target,
-      " section:", section,
-    );
+  public onEpubDblclick({textSrc, textId}: {textSrc: string, textId: string}) {
+    console.log(`<reader.onEpubDblclick> receive dbclick event from iframe. ${textSrc}#${textId}`);
+    if (!textId) return;
 
-    const target = event.target as Node;
-    const el = target.nodeType === 3
-      ? (target.parentNode as HTMLElement)
-      : (target as HTMLElement);
-    
-    const textSrc = section.href;
-    const textId = el.id;
     const smilpar = this.smilManager.findByText(textSrc, textId);
     console.log('<reader.handleEpubDblclick> got smilPar:', smilpar);
+  
     // 从 playlist 中找到 p.path.endsWith(smilpar.audioSrc) 项目的 index
     const trackIndex = smilpar && this.state.currentBook?.playlist
       ? this.state.currentBook.playlist.findIndex(p => p.path.endsWith(smilpar.audioSrc))
@@ -490,5 +476,3 @@ class AudioBookReader {
 }
 
 export const reader = AudioBookReader.getInstance();
-
-

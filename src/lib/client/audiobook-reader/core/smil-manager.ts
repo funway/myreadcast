@@ -21,7 +21,7 @@ export class SmilManager {
       const resp = await fetch(smilPath);
       const data: SmilPar[] = await resp.json();
       this.smilPars = data;
-      console.log('<SmilManager.load> SMIL pars:', data);
+      console.log('<SmilManager.load> SMIL pars length:', data.length);
       this.buildIndexes();
     } catch (error) {
       console.error('<SmilManager.load> Failed to load SMIL pars:', error);
