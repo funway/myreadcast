@@ -456,6 +456,8 @@ class AudioBookReader {
          * 比如 "big brother " > "is watching you!"
          * 那么此时, 在读完该句子之前, epubjs 是不会翻页的.
          * 要解决这个问题，需要改用 cfi 跳转, cfi 可以指定到该标签元素内的第几个字符。
+         * 另外，可以通过 rendition.location 获取当前渲染的 start location.cfi 与 end location.cfi
+         * 判断当前标签的 cfi 是否落在这里面来判断是否翻页 (也可以减少 goToHref 的重复调用！)
          */
       }
     }
@@ -547,6 +549,6 @@ class AudioBookReader {
 
 export const reader = AudioBookReader.getInstance();
 
-if (process.env.NODE_ENV === 'development') {
+if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
   (window as Window & { reader?: AudioBookReader | null }).reader = reader;
 }
