@@ -19,13 +19,14 @@ export type BookConfig = {
 export type AudioTrack = {
   title: string;
   path: string;         // 音频文件的 URL 路径 (/api/book/[bookId]/[...relPath])
+  relPath: string;      // 音频文件相对于有声书文件夹的路径 (URL encoded, 方便与 SMIL 中的 audioSrc 对齐)
   duration: number;     // 音频文件时长(float 秒)
 }
 
 export type TrackPosition ={ 
-  trackIndex: number,
-  startTime: number,
-  endTime: number,
+  trackIndex: number;
+  startTime: number;
+  endTime: number;
 }
 
 /**
@@ -40,16 +41,22 @@ export type SmilPar ={
   clipEnd: number;    // 对应的音频片段结束时间, 以秒为单位的浮点数
 }
 
+export type EpubProgress = {
+  cfi: string;          // epub.js 当前渲染页面的 start location
+  percentage?: number;  // float 进度百分比
+  updatedAt: number;    // 上次更新
+}
+
+export type AudioProgress = {
+  trackIndex: number;   // 当前播放的 track index
+  trackSeek: number;    // 当前播放的 track 的时间点
+  percentage?: number;  // float 进度百分比
+  updatedAt: number;    // 更新时间
+}
+
 export type ReadingProgress = {
-  epub?: {
-    cfi: string;        // epub.js 当前渲染页面的 start location
-    progress?: number;  // float 进度百分比
-  },
-  audio?: {
-    trackIndex: number, // 当前播放的 track index
-    trackSeek: number,  // 当前播放的 track 的时间点
-    progress?: number   // float 进度百分比
-  }
+  epub?: EpubProgress;
+  audio?: AudioProgress;
 }
 
 export const KEYBOARD_SHORTCUTS = {
@@ -110,7 +117,8 @@ export type ReaderEvents = {
   'state-changed': ReaderState;
   'book-loaded': BookConfig;
   'epub-dblclick': { textSrc: string, textId: string };
-  // 'progress-updated': { cfi?: string; audioTime?: number };
+  'epub-progress-updated': void;
+  'audio-progress-updated': void;
   // 'page-changed': { page: number; totalPages: number };
   // 'audio-time-updated': { currentTime: number; totalDuration: number };
   // 'highlight-changed': { elementId: string };

@@ -9,6 +9,9 @@ import {
   ReaderSettings,
   AudioPlaySettings,
   EpubViewSettings,
+  EpubProgress,
+  AudioProgress,
+  ReadingProgress,
 } from '../types';
 import { EpubManager } from './epub-manager';
 import { AudioManager } from './audio-manager';
@@ -64,6 +67,7 @@ class AudioBookReader {
   private static instance: AudioBookReader;
   private emitter: Emitter<ReaderEvents> = mitt<ReaderEvents>();
   private state: ReaderState;
+  private progressSaved: ReadingProgress = {};    // 阅读进度 (与数据库保持同步, 不保证实时同步) 
 
   private epubManager: EpubManager;     // 负责 Epub 的加载和渲染
   private audioManager: AudioManager;   // 负责 Audio 的加载和播放
@@ -76,6 +80,8 @@ class AudioBookReader {
     this.smilManager = new SmilManager(this.updateState.bind(this));
 
     this.on('epub-dblclick', this.onEpubDblclick.bind(this));
+    this.on('epub-progress-updated', this.onEpubProgressUpdated.bind(this));
+    this.on('audio-progress-updated', this.onAudioProgressUpdated.bind(this));
   }
 
   private getInitialState(): ReaderState {
@@ -102,24 +108,6 @@ class AudioBookReader {
   }
 
   /**
-   * Set a new {@link ReaderState} if it is actually different with the current.   
-   * If the state changes, update it and emit a `"state-changed"` event.
-   *
-   * @param newState - new ReaderState object
-   * @emits `state-changed` - Emitted only when the state has actually changed
-   */
-  private setState(newState: ReaderState) {
-    // TODO - 使用 JSON.stringfy 并不是一个高效的对象比较方案
-    if (JSON.stringify(this.state) !== JSON.stringify(newState)) {
-      this.state = newState;
-      this.emit('state-changed', this.state);
-      console.log("<reader> setState, state-changed (emit)", newState);
-    } else {
-      console.log("<reader> setState, no-changed");
-    }
-  }
-
-  /**
    * Merge the given partial state into the current {@link ReaderState}.  
    * If the state changes, update it and emit a `"state-changed"` event.
    *
@@ -133,6 +121,15 @@ class AudioBookReader {
     if (JSON.stringify(this.state) !== JSON.stringify(updatedState)) {
       this.state = updatedState;
       this.emit('state-changed', this.state);
+
+      if (updates.currentCfi) {
+        this.emit('epub-progress-updated', undefined);
+      }
+
+      if (updates.currentTrackIndex || updates.currentTrackTime) {
+        this.emit('audio-progress-updated', undefined);
+      }
+      
       if (updates.debug_msg) {
         console.log("<reader> updateState, state-changed (emit)", updates);
       }
@@ -141,15 +138,20 @@ class AudioBookReader {
     }
   }
 
-  public async open(bookConfig: BookConfig) {
-    console.log('<reader> Opening book:', bookConfig.title);
+  public async open(bookConfig: BookConfig, progress: ReadingProgress = {}) {
+    console.log('<reader> Opening book:', bookConfig.title, progress);
     
     // 1. Reset state before opening a new book
     this.close();
-    
+
+    this.progressSaved = progress;
+
     // 2. Load new book
     if (bookConfig.type === 'epub') {
       await this.epubManager.load(bookConfig.opfPath!);
+      if (progress.epub) {
+        this.goToCfi(progress.epub.cfi);
+      }
     } else if (bookConfig.type === 'audible_epub') {
       // 2.1 加载 EPUB
       await this.epubManager.load(bookConfig.opfPath!);
@@ -157,6 +159,14 @@ class AudioBookReader {
       this.audioManager.loadPlaylist(bookConfig.playlist);
       this.audioManager.applySettings(this.state.settings.audioPlay);
       this.smilManager.load(bookConfig.smilPath!);
+
+      if (progress.epub) {
+        this.goToCfi(progress.epub.cfi);
+      }
+      // if (progress.audio) {
+      //   // this.
+      // }
+
       // 2.3 加载 SMIL
       /**
        * TODO: 现在的 SMILManager 只是一个空壳，还没有实现任何功能
@@ -173,14 +183,14 @@ class AudioBookReader {
           "clipEnd": 2.562
           },
        * 
-       * 2. 提供一个方法, 输入 textSrc, textid, 返回对应的 smilpar, 然后计算 trackIndex (从 playlist 中找) 跟 clipBegin
+       * 2. 提供一个方法, 输入 textSrc, textId, 返回对应的 smilpar, 然后计算 trackIndex (从 playlist 中找) 跟 clipBegin
        *  然后我们就可以调用 setTrack() 来播放对应的音频
        * 
        * 3. 提供一个方法，输入 trackIndex 跟 currentTime, 返回对应的 smilpar
        *  然后我就可以调用一个新方法，通过 epubManager 中的 epub.js 给 textId 的标签增加一个 highlight css 类(清除之前的 highligh 标签)
        *  但这里需要判断当前 iframe view 中显示的是否是 textsrc 文件(如果不是，就不用高亮)
        * 
-       * 4. 我们还需要实现一个 实时同步的 开关，当启用实时同步的时候，需要自动加载对应的 textsrc。并且高亮 textid 标签 (如果该 textid 标签不在当前视口，自动翻页到该 textid 显示在窗口中)
+       * 4. 我们还需要实现一个 实时同步的 开关，当启用实时同步的时候，需要自动加载对应的 textsrc。并且高亮 textId 标签 (如果该 textId 标签不在当前视口，自动翻页到该 textId 显示在窗口中)
        */
       
 
@@ -206,8 +216,10 @@ class AudioBookReader {
     this.epubManager.destroy();
     this.audioManager.destroy();
     this.smilManager.destroy();
+    this.progressSaved = {};
     
-    this.setState(this.getInitialState());
+    this.state = this.getInitialState();
+    this.emit('state-changed', this.state);
   }
 
   public nextPage() {
@@ -246,6 +258,11 @@ class AudioBookReader {
   public goToHref(href: string) {
     console.log(`<AudioBookReader.goToHref> href: ${href}`);
     this.epubManager.goToHref(href);
+  }
+
+  public goToCfi(cfi: string) {
+    console.log(`<AudioBookReader.goToCfi> cfi: ${cfi}`);
+    this.epubManager.goToCfi(cfi);
   }
 
   /**
@@ -325,12 +342,16 @@ class AudioBookReader {
     this.seekTo(targetOffset);
   }
   
+  public setSyncPage(syncFlag: boolean) {
+    this.updateSettings({ audioPlay: { syncPage: syncFlag } });
+  }
+
   public setPlaybackRate(rate: number) {
     const maxRate = 2;
     const minRate = 0.5;
     const clamped = Math.max(minRate, Math.min(maxRate, rate));
     this.audioManager.setRate(clamped);
-    this.updateSettings({ audioPlay: { playbackRate: clamped } })
+    this.updateSettings({ audioPlay: { playbackRate: clamped } });
   }
 
   public setVolume(volume: number) {
@@ -393,7 +414,56 @@ class AudioBookReader {
       });
     }
   }
-  
+
+  /**
+   * - 向数据库更新阅读进度
+   */
+  public onEpubProgressUpdated() {
+    // console.log('<reader.onEpubProgressUpdated>');
+  }
+
+  /**
+   * - 向数据库更新阅读进度
+   * - 高亮 EPUB
+   * - 强制跳转 EPUB
+   */
+  public onAudioProgressUpdated() {
+    const trackIndex = this.state.currentTrackIndex;
+    const trackSeek = this.state.currentTrackTime;
+    console.log('<reader.onAudioProgressUpdated>', trackIndex, trackSeek);
+    if (trackIndex === undefined || trackSeek === undefined) {
+      console.warn('<reader.onAudioProgressUpdated> track index or seek undefined');
+      return;
+    }
+
+    if (this.state.currentBook!.type === 'audible_epub') {
+      const trackSrc = this.state.currentBook!.playlist[trackIndex].relPath;
+      const smilPar = this.smilManager.findByAudioTime(trackSrc, trackSeek);
+      console.log('<reader.onAudioProgressUpdated> got smilpar:', smilPar);
+
+      // sync highlighting
+      if (this.state.settings.audioPlay.syncHighlight && smilPar) {
+        this.epubManager.highlightText(smilPar.textSrc, smilPar.textId);
+      }
+
+      // sync jumping
+      if (this.state.settings.audioPlay.syncPage && smilPar) {
+        const href = `${smilPar.textSrc}#${smilPar.textId}`;
+        this.goToHref(href);
+        /**
+         * TODO! 
+         * 这里有一个问题, 如果这个 text 是一个长句，并且正好被渲染在翻页的地方. 
+         * 比如 "big brother " > "is watching you!"
+         * 那么此时, 在读完该句子之前, epubjs 是不会翻页的.
+         * 要解决这个问题，需要改用 cfi 跳转, cfi 可以指定到该标签元素内的第几个字符。
+         */
+      }
+    }
+
+    // Sync to DB
+    
+  }
+
   public handleShortcut(action: ShortcutAction) {
     if (!this.state.isOpen) return;
     console.log(`<reader> handle shortcut action: ${action}`);
@@ -476,3 +546,7 @@ class AudioBookReader {
 }
 
 export const reader = AudioBookReader.getInstance();
+
+if (process.env.NODE_ENV === 'development') {
+  (window as Window & { reader?: AudioBookReader | null }).reader = reader;
+}

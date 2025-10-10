@@ -70,9 +70,20 @@ export const AudioPlayer = memo(({ className, showCloseButton = false }: AudioPl
 
                 {/* Right: Extra Controls */}
                 <div className="w-1/3 flex items-center justify-end gap-2">
+                    {/* 文本同步按钮 */}
+                    {currentBook && currentBook.type === 'audible_epub' && (
+                        <button
+                            className={`btn btn-ghost btn-circle tooltip`}
+                            data-tip={settings.syncPage ? '关闭文本同步' : '开启文本同步'}
+                            onClick={() => reader.setSyncPage(!settings.syncPage)}
+                        >
+                            <MyIcon iconName={settings.syncPage ? 'syncOn' : 'syncOff'} />
+                        </button>
+                    )}
+
                     {/* 播放速度控制 - 竖直滑动条 */}
                     <div className="dropdown dropdown-top dropdown-end">
-                        <div tabIndex={0} role="button" className="btn btn-ghost w-14">{settings.playbackRate}x</div>
+                        <div tabIndex={0} role="button" className="btn btn-ghost btn-circle">{settings.playbackRate}x</div>
                         <div tabIndex={0} className="dropdown-content bg-base-200 rounded-box z-[1] w-16 p-3 shadow flex flex-col items-center">
                             <div className="text-xs text-center">{settings.playbackRate}x</div>
                             <div className="h-32 flex items-center">

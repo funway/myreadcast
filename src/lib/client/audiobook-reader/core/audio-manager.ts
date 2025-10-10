@@ -55,10 +55,15 @@ export class AudioManager {
         src: [track.path],
         html5: true,  // Force HTML5 Audio to enable streaming
         loop: false,
+
+        /**
+         * Don’t update tracktime on Howel Events, or the progress bar in UI will jump when the user seeks manually.
+         */
         onload: () => {
           console.log(`<AudioManager> Howl event - Track loaded. index=${trackIndex}`);
           this.updateState({
             currentTrackIndex: this.currentTrackIndex,
+            // currentTrackTime: 0,
             debug_msg: 'Howl onload fired'
           });
         },

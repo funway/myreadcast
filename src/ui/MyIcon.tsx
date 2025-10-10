@@ -57,7 +57,9 @@ import {
 	LuVolumeOff,
 	LuVolume,
 	LuChevronsRight,
-	LuChevronsLeft
+	LuChevronsLeft,
+	LuLocateFixed,
+	LuLocate
 } from "react-icons/lu";
 
 // 图标映射
@@ -125,6 +127,8 @@ const iconMap = {
 	x: LuX,
 	list: LuList,
 	toc: LuList,
+	syncOn: LuLocateFixed,
+	syncOff: LuLocate,
 };
 
 // 获取所有可用的图标名称

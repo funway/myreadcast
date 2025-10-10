@@ -189,12 +189,37 @@ export class EpubManager {
       return;
     }
 
-    const views = this.rendition.views();
+    this.clearHighlight();
 
+    const views = this.rendition.views().all();
+    for (const view of views) {
+      if (view.section.href === textSrc) {
+        const doc = view.document;
+        if (!doc) continue;
+        
+        const el = doc.getElementById(textId);
+        if (el) {
+          el.classList.add('smil-highlight');
+        } else {
+          console.warn(`<EpubManager.highlightText> Element with id ${textId} not found in ${textSrc}`);
+        }
+        break;
+      }
+    }
   }
 
+  /**
+   * 清除 rendition.views 中所有 .smil-highlight 的 CSS class
+   */
   public clearHighlight() { 
-
+    if (!this.rendition) return;
+    const views = this.rendition.views().all();
+    for (const view of views) {
+      const doc = view.document;
+      if (!doc) continue;
+      const highlighted = doc.querySelectorAll('.smil-highlight');
+      highlighted.forEach(el => el.classList.remove('smil-highlight'));
+    }
   }
 
   public applySettings(settings: EpubViewSettings) {

@@ -176,11 +176,19 @@ export function EpubViewer() {
 
         <div className="absolute inset-2 flex justify-between items-center pointer-events-none">
           <div className="p-2 rounded-full cursor-pointer pointer-events-auto opacity-20 hover:opacity-100"
-            onClick={() => reader.prevPage()}>
+            onClick={() => {
+              reader.setSyncPage(false);
+              reader.prevPage();
+            }}
+          >
             <MyIcon iconName="chevronLeft" className="w-[3em] h-[3em]" />
           </div>
           <div className="p-2 rounded-full cursor-pointer pointer-events-auto opacity-20 hover:opacity-100"
-            onClick={() => reader.nextPage()}>
+            onClick={() => {
+              reader.setSyncPage(false);
+              reader.nextPage();
+            }}
+          >
             <MyIcon iconName="chevronRight" className="w-[3em] h-[3em]" />
           </div>
         </div>

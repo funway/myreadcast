@@ -63,6 +63,7 @@ export function createBookConfig(bookData: Book): BookConfig {
   const playlist = rawPlaylist ? rawPlaylist.map(track => ({
     title: track.title,
     path: `${urlPath}/${encodeURI(track.relPath)}`,
+    relPath: encodeURI(track.relPath),
     duration: track.duration,
   })) : [];
   

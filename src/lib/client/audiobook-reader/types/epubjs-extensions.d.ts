@@ -37,6 +37,19 @@
  * - view.section 指向该 iframe 的原始 section 对象
  * - views 列表挂载在 book.rendition 下面 (book.rendition.manager.views)
  * - sections 列表挂载在 book.spine 下面 (book.spine.spineItems)
+ * 
+ * 5. 跨页问题
+ * 假设我们有一个标签 id 是 ae00310, 
+ * 我们可以使用 rendition.display("Text/Chapter%201.xhtml#ae00310") 跳转到该标签的位置。
+ * 但是如果该标签包含长文本，又正好跨页了。
+ * 那么使用 href 的形式跳转，只能在当前渲染的 view 右下角显示该 text 的前半部分，后半部分在下一页无法自动跳转。
+ * 这时候就需要使用 rendition.display(cfi) 的形式.
+ * 1. 先通过 section.cfiFromElement(sec.document.getElementById("ae00310")); 获取该标签元素的 cfi
+ *    得到 'epubcfi(/6/10!/4/2/108/2/6[ae00310])'
+ * 2. 假设该标签内共有 60 个字符, 后 20 个字符被渲染在下一页
+ *    根据 cfi 规则
+ *    epubcfi(/6/10!/4/2/108/2/6[ae00310]/1:45) 后面加上 /1 表示取该元素内部文本, :45 表示第45个字符
+ * 3. 通过 rendition.display('epubcfi(/6/10!/4/2/108/2/6[ae00310]/1:45)') 就能跳转到显示第45个字符的页面了。
  */
 
 
@@ -49,8 +62,9 @@ import Section from 'hawu-epubjs/types/section';
 declare module "hawu-epubjs" {
   /** 修改 View 类型声明 */
   interface View {
-    document?: Document;
-    window?: Window;
+    document: Document;
+    window: Window;
+    section: Section;
   }
   /**
    * View 派生了两个类: IframeView 和 InlineView
