@@ -19,13 +19,14 @@
  * Usage of Epub.js
  * 
  * 1. Get current rendering views (iframes)
- * ✅ book.rendition.views()  // 返回当前渲染的 iframe 列表
+ * ✅ book.rendition.views()        // 返回当前渲染的 iframe 列表
  * ❌ book.rendition.getContents()  // 返回的是未渲染的 documents
  * 
  * 2. Jump to specific chapter/page/anchor/cfi
- * book.rendition.display()
- * book.rendition.display("Text/Chapter%201.xhtml#ae00293");
- * book.rendition.display("epubcfi(/6/10!/4/2/102/2/2[ae00293],/1:0,/1:5)");
+ * book.rendition.display()         // 显示首页
+ * book.rendition.display("Text/Chapter%201.xhtml#ae00293");                  // 显示目标锚点
+ * book.rendition.display("epubcfi(/6/10!/4/2/102/2/2[ae00293]/1:0)");        // 显示目标 cfi 所在位置
+ * book.rendition.display("epubcfi(/6/10!/4/2/102/2/2[ae00293],/1:0,/1:5)");  // 显示目标 cfi range 所在位置
  * 
  * 3. Assign CSS to a specific element in a view
  * book.rendition.views().get(0).document.getElementById("ae00293").classList.add("smil-highlight");
@@ -48,7 +49,11 @@
  *    得到 'epubcfi(/6/10!/4/2/108/2/6[ae00310])'
  * 2. 假设该标签内共有 60 个字符, 后 20 个字符被渲染在下一页
  *    根据 cfi 规则
- *    epubcfi(/6/10!/4/2/108/2/6[ae00310]/1:45) 后面加上 /1 表示取该元素内部文本, :45 表示第45个字符
+ *    epubcfi(/6/10!/4/2/108/2/6[ae00310]/1:45) 后面加上 /1 表示取该元素的第一个文本子元素, :45 表示第45个字符
+ *    但是这又有一个问题，我们无法知道它的子元素的构成, 除非自己再进行详细解析。
+ *    比如: <p id="ae00310">hello, <b>word.</b> Let's read some book.</p>
+ *    这时候, hello 就是在 /1:0 到 /1:4. 而 Let's 则是从 /5:0 开始了。
+ * 文本子元素可能是  /1:0 ~ /1:30, 然后中间有一个标签元素分割，然后再到第二个文本子元素这样，这时候第二个文本子元素的 offset 就变成了 /5:1 ~ /5:30 了。
  * 3. 可以通过 rendition.location 获取当前渲染的开始位置与结束位置的 cfi, 用来判断当前文本的 cfi 落在这个范围内
  * 4. 通过 rendition.display('epubcfi(/6/10!/4/2/108/2/6[ae00310]/1:45)') 就能跳转到显示第45个字符的页面了。
  */

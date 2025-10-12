@@ -95,7 +95,7 @@ export type ReaderState = {
   isPlaying: boolean;               // AudioPlayer 是否播放音频
   settings: ReaderSettings;         // AudioBookReader UI 组件的设置
   
-  currentBook: BookConfig | null;     // 书籍信息
+  book: BookConfig | null;     // 书籍信息
   toc?: NavItem[];                    // EPUB 目录
   currentCfi?: string;                // 当前的 EPUB CFI (阅读进度)
   currentTrackIndex?: number;         // 当前 track 在 playlist 中的 idx

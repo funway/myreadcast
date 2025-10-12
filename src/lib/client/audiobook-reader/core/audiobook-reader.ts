@@ -16,6 +16,7 @@ import {
 import { EpubManager } from './epub-manager';
 import { AudioManager } from './audio-manager';
 import { SmilManager } from './smil-manager';
+import { debounce, throttle } from '../../utils';
 
 const SETTINGS_KEY = 'myreadcast-reader-settings';
 const DEFAULT_READER_SETTINGS: ReaderSettings = {
@@ -89,7 +90,7 @@ class AudioBookReader {
       isOpen: false,
       isPlaying: false,
       settings: loadReaderSettings(),
-      currentBook: null,
+      book: null,
     };
   }
 
@@ -144,7 +145,21 @@ class AudioBookReader {
     // 1. Reset state before opening a new book
     this.close();
 
-    this.progressSaved = progress;
+    // this.progressSaved = progress;
+    // Load book progress
+    // 发起请求 GET /api/progress/bookId 得到
+    try {
+      const res = await fetch(`/api/progress/${bookConfig.id}`);
+      if (res.ok) {
+      const data = await res.json();
+      this.progressSaved = data as ReadingProgress;
+      } else {
+      this.progressSaved = progress;
+      }
+    } catch (err) {
+      console.error('<AudioBookReader.open> Failed to load progress:', err);
+      this.progressSaved = progress;
+    }
 
     // 2. Load new book
     if (bookConfig.type === 'epub') {
@@ -206,7 +221,7 @@ class AudioBookReader {
     // 3. Update ReaderState
     this.updateState({
       isOpen: true,
-      currentBook: bookConfig,
+      book: bookConfig,
     });
   }
 
@@ -255,14 +270,14 @@ class AudioBookReader {
    * reader.goToHref('Text/Chapter%201.xhtml');           // 跳转到章节开头
    * reader.goToHref('Text/Chapter%201.xhtml#ae00293');  // 跳转到指定元素所在位置
    */
-  public goToHref(href: string) {
+  public async goToHref(href: string) {
     console.log(`<AudioBookReader.goToHref> href: ${href}`);
-    this.epubManager.goToHref(href);
+    await this.epubManager.goToHref(href);
   }
 
-  public goToCfi(cfi: string) {
+  public async goToCfi(cfi: string) {
     console.log(`<AudioBookReader.goToCfi> cfi: ${cfi}`);
-    this.epubManager.goToCfi(cfi);
+    await this.epubManager.goToCfi(cfi);
   }
 
   /**
@@ -270,14 +285,14 @@ class AudioBookReader {
    * @param globalOffset 全局时间轴上的位置（秒）
    */
   public seekTo(globalOffset: number) {
-    const trackPositions = this.state.currentBook?.trackPositions;
+    const trackPositions = this.state.book?.trackPositions;
     if (trackPositions === undefined || trackPositions.length === 0) {
       console.warn('<AudioBookReader.seekTo> trackPositions is undefined or empty');
       return;
     }
 
     // 确保偏移量的范围
-    const totalDuration = this.state.currentBook?.totalDuration ?? 0;
+    const totalDuration = this.state.book?.totalDuration ?? 0;
     const targetTime = Math.min(Math.max(0, globalOffset), totalDuration);
     console.log(`<AudioBookReader.seekTo> globalOffset: ${globalOffset} (${targetTime})`);
     
@@ -307,7 +322,7 @@ class AudioBookReader {
    * @returns 当前在全局时间轴上的位置（秒）
    */
   public getGlobalSeek(): number {
-    const currentTrack = this.state.currentBook?.trackPositions.find(
+    const currentTrack = this.state.book?.trackPositions.find(
       track => track.trackIndex === this.state.currentTrackIndex
     );
     if (!currentTrack) {
@@ -377,7 +392,7 @@ class AudioBookReader {
   }
 
   public attachView(element: HTMLElement) {
-    if (this.state.currentBook?.type === 'epub' || this.state.currentBook?.type === 'audible_epub') {
+    if (this.state.book?.type === 'epub' || this.state.book?.type === 'audible_epub') {
       this.epubManager.attachTo(element, this.state.settings.epubView);
     }
   }
@@ -394,8 +409,8 @@ class AudioBookReader {
     console.log('<reader.handleEpubDblclick> got smilPar:', smilpar);
   
     // 从 playlist 中找到 p.path.endsWith(smilpar.audioSrc) 项目的 index
-    const trackIndex = smilpar && this.state.currentBook?.playlist
-      ? this.state.currentBook.playlist.findIndex(p => p.path.endsWith(smilpar.audioSrc))
+    const trackIndex = smilpar && this.state.book?.playlist
+      ? this.state.book.playlist.findIndex(p => p.path.endsWith(smilpar.audioSrc))
       : 0;
 
     if (smilpar && trackIndex === -1) {
@@ -403,7 +418,7 @@ class AudioBookReader {
     }
 
     if (smilpar) {
-      const trackIndex = this.state.currentBook?.playlist.findIndex(item => item.path.endsWith(smilpar.audioSrc));
+      const trackIndex = this.state.book?.playlist.findIndex(item => item.path.endsWith(smilpar.audioSrc));
       if (trackIndex === undefined || trackIndex === -1) {
         return;
       }
@@ -415,31 +430,97 @@ class AudioBookReader {
     }
   }
 
+  private _saveEpubProgress() {
+    // console.log('<reader._EpubProgressUpdater>')
+    if (!this.state.book) {
+      console.error('<reader.onEpubProgressUpdated> state.book is undefined');
+      return;
+    }
+
+    const cfi = this.state.currentCfi;
+    if (cfi === undefined) {
+      console.error('<reader.onEpubProgressUpdated> currentCfi is undefined');
+      return;
+    }
+    const progress = this.epubManager.percentageFromCfi(cfi);
+    if (progress === null) {
+      console.warn('<reader.onEpubProgressUpdated> progress is null (epubjs.locations unready)');
+      return;
+    }
+    
+    fetch(`/api/progress/${this.state.book.id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        epubCfi: cfi,
+        epubProgress: progress,
+      }),
+    }).catch(err => {
+      console.error('<reader.onEpubProgressUpdated> Failed to update progress:', err);
+    });
+  }
+
+  private _debouncedSaveEpubProgress = debounce(() => this._saveEpubProgress(), 500);
+
   /**
    * - 向数据库更新阅读进度
    */
   public onEpubProgressUpdated() {
     // console.log('<reader.onEpubProgressUpdated>');
+
+    // Sync progress to DB
+    this._debouncedSaveEpubProgress();
   }
+
+  private _saveAudioProgress() {
+    // console.log('<reader._saveAudioProgress>', new Date().toUTCString());
+
+    if (!this.state.book) {
+      console.error('<reader._saveAudioProgress> state.book is undefined');
+      return;
+    }
+
+    const trackIndex = this.state.currentTrackIndex;
+    const trackTime = this.state.currentTrackTime;
+    if (trackIndex === undefined || trackTime === undefined) {
+      console.error('<reader._saveAudioProgress> trackIndex or trackTime is undefined');
+      return;
+    }
+    const progres = this.getGlobalSeek() / this.state.book.totalDuration;
+
+    fetch(`/api/progress/${this.state.book.id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        audioIndex: trackIndex,
+        audioSeek: trackTime,
+        audioProgress: progres,
+      }),
+    }).catch(err => {
+      console.error('<reader._saveAudioProgress> Failed to update audio progress:', err);
+    });
+  }
+
+  private _throttledSaveAudioProgress = throttle(() => this._saveAudioProgress(), 500);
 
   /**
    * - 向数据库更新阅读进度
    * - 高亮 EPUB
    * - 强制跳转 EPUB
    */
-  public onAudioProgressUpdated() {
+  public async onAudioProgressUpdated() {
     const trackIndex = this.state.currentTrackIndex;
     const trackSeek = this.state.currentTrackTime;
-    console.log('<reader.onAudioProgressUpdated>', trackIndex, trackSeek);
+    // console.log('<reader.onAudioProgressUpdated>', trackIndex, trackSeek);
     if (trackIndex === undefined || trackSeek === undefined) {
       console.warn('<reader.onAudioProgressUpdated> track index or seek undefined');
       return;
     }
 
-    if (this.state.currentBook!.type === 'audible_epub') {
-      const trackSrc = this.state.currentBook!.playlist[trackIndex].relPath;
+    if (this.state.book!.type === 'audible_epub') {
+      const trackSrc = this.state.book!.playlist[trackIndex].relPath;
       const smilPar = this.smilManager.findByAudioTime(trackSrc, trackSeek);
-      console.log('<reader.onAudioProgressUpdated> got smilpar:', smilPar);
+      // console.log('<reader.onAudioProgressUpdated> got smilpar:', smilPar);
 
       // sync highlighting
       if (this.state.settings.audioPlay.syncHighlight && smilPar) {
@@ -448,22 +529,25 @@ class AudioBookReader {
 
       // sync jumping
       if (this.state.settings.audioPlay.syncPage && smilPar) {
-        const href = `${smilPar.textSrc}#${smilPar.textId}`;
-        this.goToHref(href);
-        /**
-         * TODO! 
-         * 这里有一个问题, 如果这个 text 是一个长句，并且正好被渲染在翻页的地方. 
-         * 比如 "big brother " > "is watching you!"
-         * 那么此时, 在读完该句子之前, epubjs 是不会翻页的.
-         * 要解决这个问题，需要改用 cfi 跳转, cfi 可以指定到该标签元素内的第几个字符。
-         * 另外，可以通过 rendition.location 获取当前渲染的 start location.cfi 与 end location.cfi
-         * 判断当前标签的 cfi 是否落在这里面来判断是否翻页 (也可以减少 goToHref 的重复调用！)
-         */
+        // const href = `${smilPar.textSrc}#${smilPar.textId}`;
+        // await this.goToHref(href);
+        const clipDuration = smilPar.clipEnd - smilPar.clipBegin;
+        const clipOffset = this.getCurrentTrackSeek() - smilPar.clipBegin;
+        const cfi = this.epubManager.getCfi(smilPar.textSrc, smilPar.textId, clipOffset / clipDuration);
+        
+        if (cfi && this.epubManager.cfiDisplaying(cfi)) {
+          console.log('<reader.onAudioProgressUpdated> cfi is displaying, do nothing');
+        } else if (cfi) {
+          await this.goToCfi(cfi);
+        } else {
+          const href = `${smilPar.textSrc}#${smilPar.textId}`;
+          await this.goToHref(href);
+        }
       }
     }
 
-    // Sync to DB
-    
+    // Sync progress to DB
+    this._throttledSaveAudioProgress();
   }
 
   public handleShortcut(action: ShortcutAction) {

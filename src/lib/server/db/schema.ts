@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { text, integer, sqliteTable, check, real } from "drizzle-orm/sqlite-core";
+import { text, integer, sqliteTable, check, real, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 const timestamps = {
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
@@ -69,10 +69,20 @@ export const ReadingProgressTable = sqliteTable('reading_progress', {
   id: text('id').primaryKey(),
   userId: text('user_id').notNull(),
   bookId: text('book_id').notNull(),
-  epubProgress: text('epub_progress', { mode: 'json' }),    // {cfi, progress}
-  audioProgress: text('audio_progress', { mode: 'json' }),  // {trackIndex, trackSeek, progress}
+  
+  epubCfi: text('epub_cfi'),
+  epubProgress: real('epub_progress'),
+  
+  audioIndex: integer('audio_index'),
+  audioSeek: real('audio_seek'),
+  audioProgress: real('audio_progress'),
+  
   ...timestamps,
-});
+  }, 
+  (table) => [ 
+    uniqueIndex('unique_user_book').on(table.userId, table.bookId),
+  ]
+);
 
 /**
  * 任务队列  

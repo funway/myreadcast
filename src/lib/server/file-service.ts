@@ -270,6 +270,13 @@ export async function serveFile(filePath: string, request: NextRequest, options:
   const finalPath = compressedPath || filePath;
   const finalStats = await fsp.stat(finalPath);
   const finalStream = fs.createReadStream(finalPath);
+  
+  /**
+   * TODO
+   * 这里如果用户在文件传输到一半的时候关闭页面, 后端会报一个异常 
+   *    TypeError: Invalid state: Controller is already closed
+   *    code: 'ERR_INVALID_STATE'
+   */
   return new NextResponse(Readable.toWeb(finalStream) as ReadableStream<Uint8Array>, {
     status: 200,
     headers: {

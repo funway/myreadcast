@@ -16,7 +16,7 @@ export const AudioPlayer = memo(({ className, showCloseButton = false }: AudioPl
     const { isPlaying, currentBook, currentTrackIndex, settings } = useReaderState(
         (s) => ({
             isPlaying: s.isPlaying,
-            currentBook: s.currentBook,
+            currentBook: s.book,
             currentTrackIndex: s.currentTrackIndex,
             settings: s.settings.audioPlay,
         }),
@@ -37,7 +37,7 @@ export const AudioPlayer = memo(({ className, showCloseButton = false }: AudioPl
     });
     
     return (
-        <div className={`flex flex-col bg-base-200 p-4 gap-2 ${className}`}>
+        <div className={`flex flex-col bg-base-200 p-4 gap-2 border-t border-base-300 ${className}`}>
             {/* Row 1: Controls */}
             <div className="flex-1 flex items-center justify-between">
                 {/* Left: Info */}
@@ -48,7 +48,7 @@ export const AudioPlayer = memo(({ className, showCloseButton = false }: AudioPl
 
                 {/* Center: Playback Controls */}
                 <div className="flex items-center justify-center gap-2">
-                    <button className='btn btn-ghost btn-circle pr-1 tooltip' data-tip='Previous Track' onClick={() => reader.prevTrack()}>
+                    <button className='btn btn-ghost btn-circle pr-1 tooltip' data-tip='Previous Chapter' onClick={() => reader.prevTrack()}>
                         <MyIcon iconName="prev" />
                     </button>
                     <button className='btn btn-ghost btn-circle tooltip' data-tip='Jump backward - 10 seconds' onClick={() => reader.rewind(10)}>
@@ -60,7 +60,7 @@ export const AudioPlayer = memo(({ className, showCloseButton = false }: AudioPl
                     <button className='btn btn-ghost btn-circle tooltip' data-tip='Jump forward - 10 seconds' onClick={() => reader.forward(10)}>
                         <MyIcon iconName="forward" />
                     </button>
-                    <button className='btn btn-ghost btn-circle pl-1 tooltip' data-tip='Next Track'
+                    <button className='btn btn-ghost btn-circle pl-1 tooltip' data-tip='Next Chapter'
                         onClick={() => reader.nextTrack()}
                         disabled={currentTrackIndex === playlist.length - 1}
                     >
@@ -74,7 +74,7 @@ export const AudioPlayer = memo(({ className, showCloseButton = false }: AudioPl
                     {currentBook && currentBook.type === 'audible_epub' && (
                         <button
                             className={`btn btn-ghost btn-circle tooltip`}
-                            data-tip={settings.syncPage ? '关闭文本同步' : '开启文本同步'}
+                            data-tip={settings.syncPage ? 'Sync Off' : 'Sync Text'}
                             onClick={() => reader.setSyncPage(!settings.syncPage)}
                         >
                             <MyIcon iconName={settings.syncPage ? 'syncOn' : 'syncOff'} />
@@ -147,6 +147,9 @@ export const AudioPlayer = memo(({ className, showCloseButton = false }: AudioPl
                             ))}
                         </ul>
                     </div>
+                    {currentBook && currentBook.type === 'audios' && (
+                        <button className="btn btn-circle btn-ghost" onClick={() => reader.close()}><MyIcon iconName='x'></MyIcon></button>
+                    )}
                 </div>
             </div>
 

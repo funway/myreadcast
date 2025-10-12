@@ -12,7 +12,7 @@ import { KEYBOARD_SHORTCUTS, reader } from '@/lib/client/audiobook-reader';
  */
 export function AudioBookReader() {
   const { isOpen, currentBook } = useReaderState(
-    (state) => ({ isOpen: state.isOpen, currentBook: state.currentBook }),
+    (state) => ({ isOpen: state.isOpen, currentBook: state.book }),
     "AudioBookReader"
   );
 

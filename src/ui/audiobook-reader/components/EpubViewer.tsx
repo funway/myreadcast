@@ -15,7 +15,7 @@ const FONT_FAMILIES = [
 
 export function EpubViewer() {
   const { currentBook, settings, toc } = useReaderState((state) => ({
-    currentBook: state.currentBook,
+    currentBook: state.book,
     settings: state.settings.epubView,
     toc: state.toc,
   }), "EpubViewer");
@@ -156,12 +156,7 @@ export function EpubViewer() {
 
         {/* 右侧：关闭按钮 */}
         <div className="flex items-center justify-end w-1/5">
-          <button
-            className="btn btn-circle btn-ghost"
-            onClick={() => reader.close()}
-          >
-            ✕
-          </button>
+          <button className="btn btn-circle btn-ghost" onClick={() => reader.close()}><MyIcon iconName='x'></MyIcon></button>
         </div>
       </div>
 
@@ -177,7 +172,9 @@ export function EpubViewer() {
         <div className="absolute inset-2 flex justify-between items-center pointer-events-none">
           <div className="p-2 rounded-full cursor-pointer pointer-events-auto opacity-20 hover:opacity-100"
             onClick={() => {
-              reader.setSyncPage(false);
+              if (reader.getState().settings.audioPlay.syncPage) {
+                reader.setSyncPage(false);
+              }
               reader.prevPage();
             }}
           >
@@ -185,7 +182,9 @@ export function EpubViewer() {
           </div>
           <div className="p-2 rounded-full cursor-pointer pointer-events-auto opacity-20 hover:opacity-100"
             onClick={() => {
-              reader.setSyncPage(false);
+              if (reader.getState().settings.audioPlay.syncPage) {
+                reader.setSyncPage(false);
+              }
               reader.nextPage();
             }}
           >

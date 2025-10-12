@@ -1,5 +1,5 @@
-import { EpubViewSettings, ReaderEventEmitter, StateUpdater } from '../types';
-import Epub, { Book, Rendition, Location, NavItem, View, Contents } from 'hawu-epubjs';
+import { EpubViewSettings, ReaderEventEmitter, SmilPar, StateUpdater } from '../types';
+import Epub, { Book, Rendition, Location, NavItem, View, Contents, EpubCFI } from 'hawu-epubjs';
 import Section from 'hawu-epubjs/types/section';
 import { getAppColors } from '../utils';
     
@@ -62,7 +62,7 @@ export class EpubManager {
     }
   }
 
-  public attachTo(element: HTMLElement, settings: EpubViewSettings)
+  public async attachTo(element: HTMLElement, settings: EpubViewSettings)
   {
     if (!this.book || !element) {
       console.error('Book not loaded or element not provided to attachTo.');
@@ -79,13 +79,12 @@ export class EpubManager {
       allowScriptedContent: true,
     });
     this.applySettings(settings);
-    this.rendition.display();
 
-    // 2. Listen to location changes to update page numbers (翻页事件)
+    // 2. Listen to location changes to update page numbers (翻页事件, 其实是在每次调用 rendition.display() 后触发)
     this.rendition.on('relocated', (location: Location) => {
       const href = location.start.href;
       const cfi = location.start.cfi;
-      const percentage = this.book?.locations.percentageFromCfi(cfi) ?? 0;  // 在 locations 还没准备好时，percentageFromCfi 会返回 null
+      const percentage = this.percentageFromCfi(cfi) ?? 0;
       console.log(`<EpubManager> epub.js, Rendition event, relocated: ${href}, ${cfi}, ${percentage}%`, location);
 
       this.updateState({ currentCfi: cfi });
@@ -100,7 +99,9 @@ export class EpubManager {
           " section:", section,
           " view:", view
         );
-        // event.preventDefault();
+        
+        // event.preventDefault();  这并不能阻止双击时候浏览器默认的文本选中事件
+
         const target = event.target as Node;
         const el = target.nodeType === 3
           ? (target.parentNode as HTMLElement)
@@ -117,6 +118,9 @@ export class EpubManager {
     this.rendition.on('selected', (cfiRange: string, contents: Contents) => {
       console.log("<EpubManager> epub.js, Rendition event, selected:", cfiRange, contents);
     });
+
+    // 5. Display
+    await this.rendition.display();
   }
 
   public detach() {
@@ -140,6 +144,120 @@ export class EpubManager {
 
   public getToc(): NavItem[] {
     return this.book?.navigation.toc || [];
+  }
+
+  /**
+   * 返回当前显示页面的 rendered location range, 包括 { start, end }
+   * @returns 
+   */
+  public getCurrentLocation() {
+    return this.rendition?.location;
+  }
+
+  public getCfi(chapterSrc: string, tagId: string, offsetRatio: number = 0) {
+    const section = this.book?.spine.get(chapterSrc);
+    if (!section) {
+      console.warn(`<EpubManager.getCfi> Section not found for chapterSrc: ${chapterSrc}`);
+      return null;
+    }
+
+    if (!section.document) {
+      console.warn(`<EpubManager.getCfi> Document of section ${chapterSrc} is not loaded`);
+      return null;
+    }
+    
+    const elem = section.document.getElementById(tagId);
+    if (!elem) {
+      console.warn(`<EpubManager.getCfi> Element with id ${tagId} not found in section: ${chapterSrc}`);
+      return null;
+    }
+    const elemCfi = section.cfiFromElement(elem);
+    console.log('<EpubManager.getCfi> The tag element cfi:', elemCfi);
+
+    // 计算 elem 下面的全部字符数
+    const totalLength = elem.textContent.length;
+    // 计算目标字符的位置
+    const target = Math.floor(offsetRatio * totalLength);
+
+    /**
+     * 遍历 elem.childNodes 中的 text node
+     * 找到 target 所在的 node 的 index，以及相对于该 node 的offset
+     */
+    let accumulated = 0;
+    let nodeIndex = -1;
+    let nodeOffset = -1;
+
+    for (let i = 0; i < elem.childNodes.length; i++) {
+      const node = elem.childNodes[i];
+      if (node.nodeType === Node.TEXT_NODE) {
+        const textLength = node.textContent?.length ?? 0;
+        if (accumulated + textLength > target) {
+          nodeIndex = i;
+          nodeOffset = target - accumulated;
+          break;
+        }
+        accumulated += textLength;
+      }
+    }
+    console.log('<EpubManager.getCfi> Calculate target:', target, nodeIndex, nodeOffset);
+
+    // Use section.cfiFromElement to get the base CFI, then use cfiFromRange if offset is needed
+    if (nodeIndex !== -1 && nodeOffset !== -1) {
+      const range = section.document.createRange();  // Create a empty range
+      const textNode = elem.childNodes[nodeIndex];
+      range.setStart(textNode, nodeOffset);          // Set range start position
+      // range.setEnd(textNode, nodeOffset);         // We dont need end position here
+      const cfiWithOffset = section.cfiFromRange(range);
+      
+      console.log('<EpubManager.getCfi> The cfi with chars offset:', cfiWithOffset);
+      return cfiWithOffset;
+    }
+    return elemCfi;
+  }
+
+  /**
+   * Calculate the reading progress percentage based on a given CFI (Canonical Fragment Identifier).
+   *
+   * This function uses the `locations` object from epub.js to compute the percentage.
+   *
+   * Notes:
+   * - If `locations` are not yet generated (usually requiring asynchronous loading of all chapters),
+   *   this function will return `null`.
+   * - The return value is a decimal between 0 and 1, representing the reading progress.
+   *
+   * @param cfi - The CFI (Canonical Fragment Identifier) indicating a position in the EPUB.
+   * @returns The reading progress as a number between 0 and 1, or `null` if locations are not ready.
+   */
+  public percentageFromCfi(cfi: string): number | null {
+    return this.book!.locations.percentageFromCfi(cfi);
+  }
+
+  /**
+   * 判断该 cfi 是否在当前视口
+   * @param cfi 
+   * @returns 
+   */
+  public cfiDisplaying(cfi: string): boolean {
+    if (this.rendition) {
+      const { start, end } = this.rendition.location;
+      const afterLeft = this.rendition.epubcfi.compare(cfi, start.cfi);
+      const beforeRight = this.rendition.epubcfi.compare(end.cfi, cfi);
+      
+      console.log('start, end, target:', start, end, cfi,
+        'compare:', afterLeft, beforeRight);
+
+      if (afterLeft >=0 && beforeRight >=0 ) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  public smilDisplaying(smilPar: SmilPar): boolean {
+    const cfi = this.getCfi(smilPar.textSrc, smilPar.textId);
+    
+    if (cfi && this.cfiDisplaying(cfi)) return true;
+    return false;
   }
 
   public async goToHref(href: string) {
@@ -176,10 +294,6 @@ export class EpubManager {
 
   public prevPage() {
     this.rendition?.prev();
-  }
-
-  public getCurrentLocation() {
-    return this.rendition?.currentLocation();
   }
 
   public highlightText(textSrc: string, textId: string) { 
