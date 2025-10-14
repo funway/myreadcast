@@ -80,6 +80,7 @@ class AudioBookReader {
     this.on('epub-dblclick', this.onEpubDblclick.bind(this));
     this.on('epub-progress-updated', this.onEpubProgressUpdated.bind(this));
     this.on('audio-progress-updated', this.onAudioProgressUpdated.bind(this));
+    this.on('audio-playing-updated', this.onAudioPlayingUpdated.bind(this));
   }
 
   private getInitialState(): ReaderState {
@@ -118,17 +119,22 @@ class AudioBookReader {
     // TODO - 使用 JSON.stringfy 并不是一个高效的对象比较方案
     if (JSON.stringify(this.state) !== JSON.stringify(updatedState)) {
       this.state = updatedState;
+      
       this.emit('state-changed', this.state);
 
-      if (updates.currentCfi) {
+      if (updates.currentCfi !== undefined) {
         this.emit('epub-progress-updated', undefined);
       }
 
-      if (updates.currentTrackIndex || updates.currentTrackTime) {
+      if (updates.currentTrackIndex !== undefined || updates.currentTrackTime !== undefined) {
         this.emit('audio-progress-updated', undefined);
       }
+
+      if (updates.isPlaying !== undefined) {
+        this.emit('audio-playing-updated', updates.isPlaying);
+      }
       
-      if (updates.debug_msg) {
+      if (updates.debug_msg !== undefined) {
         console.log("<reader> updateState, state-changed (emit)", updates);
       }
     } else {
@@ -528,6 +534,14 @@ class AudioBookReader {
 
     // Sync progress to DB
     this._throttledSaveAudioProgress();
+  }
+
+  public onAudioPlayingUpdated() {
+    if (this.state.isPlaying) {
+      this.audioManager.startProgressTracking();
+    } else {
+      this.audioManager.stopProgressTracking();
+    }
   }
 
   public handleShortcut(action: ShortcutAction) {

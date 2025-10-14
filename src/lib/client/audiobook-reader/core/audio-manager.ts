@@ -79,7 +79,6 @@ export class AudioManager {
             this.safeSeek(this.pendingSeek);
             this.pendingSeek = null;
           }
-          this.startProgressTracking();
         },
         onpause: () => {
           const seek = this.sound?.seek();
@@ -144,7 +143,7 @@ export class AudioManager {
     this.setTrack({ trackIndex, offset, play: false});
   }
 
-  private startProgressTracking(delay: number = 150) {
+  public startProgressTracking() {
     /**
      * TODO 优化 sound displaying 的判断
      * 增加这个 delay 的原因，是因为 sound.onplay 事件调用 startProgressTracking 的那一个时刻, 
@@ -153,8 +152,12 @@ export class AudioManager {
      * 
      * 我们可以把这个 startProgressTracking 导出给 AudiobookReader 来根据自己的 isPlaying 变量进行控制
      */
-    this.stopProgressTracking();
-    console.log(`<AudioManager> startProgressTracking. delay ${delay}ms`);
+
+    if (this.progressTracking) {
+      return 
+    }
+
+    console.log(`<AudioManager> startProgressTracking.`);
     
     const step = () => { 
       console.log('<AudioManager.startProgressTracking.step> Tracking progress in backend');
@@ -162,28 +165,22 @@ export class AudioManager {
         this.updateState({
           currentTrackIndex: this.currentTrackIndex,
           currentTrackTime: this.sound?.seek(),
-          isPlaying: true,
           // debug_msg: '<AudioManager> Progress tracking update',
         });
-
-        // 设置下一次 tracking
-        this.progressTracking = window.setTimeout(step, PROGRESS_TRACKING_INTERVAL);
       } else {
-        // 停止 tracking
-        this.stopProgressTracking();
+        console.warn('<AudioManager.startProgressTracking.step> Sound is not playing');
       }
     };
     
-    // 启动第一次 tracking
-    this.progressTracking = window.setTimeout(step, delay); 
+    this.progressTracking = window.setInterval(step, PROGRESS_TRACKING_INTERVAL); 
   }
 
-  private stopProgressTracking() {
+  public stopProgressTracking() {
     console.log('<AudioManager.stopProgressTracking>');
     if (this.progressTracking) {
-      clearTimeout(this.progressTracking);
+      window.clearInterval(this.progressTracking);
+      this.progressTracking = null;
     }
-    this.progressTracking = null;
   }
 
   /**
@@ -316,6 +313,7 @@ export class AudioManager {
       this.soundId = null;
       this.pendingSeek = null;
     }
+    this.stopProgressTracking();
     this.playlist = [];
     this.currentTrackIndex = 0;
   }

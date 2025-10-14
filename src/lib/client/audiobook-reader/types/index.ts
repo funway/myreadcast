@@ -117,6 +117,7 @@ export type ReaderEvents = {
   'epub-dblclick': { textSrc: string, textId: string };
   'epub-progress-updated': void;
   'audio-progress-updated': void;
+  'audio-playing-updated': boolean;
   // 'page-changed': { page: number; totalPages: number };
   // 'audio-time-updated': { currentTime: number; totalDuration: number };
   // 'highlight-changed': { elementId: string };
