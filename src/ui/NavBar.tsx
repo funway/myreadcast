@@ -40,9 +40,10 @@ const NavBar = ({ className }: NavBarProps) => {
       {/* Right side */}
       <div className="navbar-end gap-1">
         {/* upload button */}
-        <div className="btn btn-ghost btn-square tooltip tooltip-bottom" data-tip="Upload">
+        {/* <div className="btn btn-ghost btn-square tooltip tooltip-bottom" data-tip="Upload">
           <MyIcon iconName="upload" />
-        </div>
+        </div> */}
+        
         {/* Admin setting button */}
         {isAdmin && (
           <Link href="/admin" className="btn btn-ghost btn-square tooltip tooltip-bottom" data-tip="Setting">

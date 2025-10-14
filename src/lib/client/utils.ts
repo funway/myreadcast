@@ -32,18 +32,27 @@ export const formatTime = (timeInSeconds: number | undefined) => {
  * @template T
  * @param {T} fn - The target function to debounce.
  * @param {number} delay - The number of milliseconds to wait after the last call.
- * @returns {(...args: Parameters<T>) => void} A debounced version of the function.
+ * @returns A debounced version of the function.
  */
 export function debounce<T extends (...args: unknown[]) => void>(
   fn: T,
   delay: number
-): (...args: Parameters<T>) => void {
+) {
   let timer: ReturnType<typeof setTimeout> | null = null;
 
-  return function (this: ThisParameterType<T>, ...args: Parameters<T>) {
+  function debounced(this: ThisParameterType<T>, ...args: Parameters<T>) {
     if (timer !== null) clearTimeout(timer);
     timer = setTimeout(() => fn.apply(this, args), delay);
   };
+
+  debounced.cancel = () => { 
+    if (timer !== null) {
+      clearTimeout(timer);
+      timer = null;
+    }
+  }
+
+  return debounced;
 }
 
 /**

@@ -147,7 +147,8 @@ class Logger {
 
   // 获取日志文件路径
   private getLogFilePath(type: 'app' | 'error' | 'access' = 'app'): string {
-    const date = new Date().toISOString().split('T')[0];
+    // const date = new Date().toISOString().split('T')[0];
+    const date = new Date().toISOString().slice(0, 7);   // only fetch yyyy-mm
     return path.join(this.logDir, `${type}-${date}.log`);
   }
 

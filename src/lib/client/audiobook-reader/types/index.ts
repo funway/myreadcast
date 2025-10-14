@@ -43,15 +43,13 @@ export type SmilPar ={
 
 export type EpubProgress = {
   cfi: string;          // epub.js 当前渲染页面的 start location
-  percentage?: number;  // float 进度百分比
-  updatedAt: number;    // 上次更新
+  progress?: number;    // float 进度
 }
 
 export type AudioProgress = {
   trackIndex: number;   // 当前播放的 track index
   trackSeek: number;    // 当前播放的 track 的时间点
-  percentage?: number;  // float 进度百分比
-  updatedAt: number;    // 更新时间
+  progress?: number;    // float 进度
 }
 
 export type ReadingProgress = {

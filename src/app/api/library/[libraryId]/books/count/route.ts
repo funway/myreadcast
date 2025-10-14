@@ -33,6 +33,9 @@ export async function GET(
     const narrator = searchParams.get('narrator');
     if (narrator) options.narrator = narrator;
 
+    const language = searchParams.get('language');
+    if (language) options.language = language;
+    
     const search = searchParams.get('search');
     if (search) options.search = search;
     

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { TaskService } from '@/lib/server/db/task';
 import { logger } from '@/lib/server/logger';
+import { ApiResponse } from '@/lib/server/api-response';
 
 export async function GET(
   request: NextRequest,
@@ -10,28 +11,19 @@ export async function GET(
     const { taskId } = await params;
     
     if (!taskId?.trim()) {
-      return NextResponse.json(
-        { success: false, message: 'Invalid task ID' }, 
-        { status: 400 }
-      );
+      return ApiResponse.fail('Invalid task ID', 400);
     }
 
     const task = await TaskService.getTaskById(taskId);
 
     if (!task) {
       logger.debug('Task not found:', { taskId });
-      return NextResponse.json(
-        { success: false, message: 'Task not found' }, 
-        { status: 404 }
-      );
+      return ApiResponse.fail('Task not found', 400);
     }
-    return NextResponse.json({ success: true, data: task });
+    return ApiResponse.success(task);
     
   } catch (error) {
     logger.error('Error fetching task:', error);
-    return NextResponse.json(
-      { success: false, message: 'Internal server error' },
-      { status: 500 }
-    );
+    return ApiResponse.fail('Internal server error', 500);
   }
 }

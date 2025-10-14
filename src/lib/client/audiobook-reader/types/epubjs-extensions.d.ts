@@ -12,7 +12,10 @@
  *    Stage 类的 destroy() 方法
  *  
  * 我把我们打补丁的版本上传到了 https://www.npmjs.com/package/hawu-epubjs
- * 本文件只用来做类型声明的补充
+ * 本文件只用来做类型声明的补充.
+ * 
+* Other Bugs
+ * - 文字为中文时，每次 relocated 事件返回的 location.start.cfi 的 offset 总是 0。导致的结果就是，如果当前页首的句子是跨页的，那么保存到数据库的 cfi 就是这句话的开头位置，也就是上一页。
  */
 
 /**
@@ -39,23 +42,6 @@
  * - views 列表挂载在 book.rendition 下面 (book.rendition.manager.views)
  * - sections 列表挂载在 book.spine 下面 (book.spine.spineItems)
  * 
- * 5. 跨页问题
- * 假设我们有一个标签 id 是 ae00310, 
- * 我们可以使用 rendition.display("Text/Chapter%201.xhtml#ae00310") 跳转到该标签的位置。
- * 但是如果该标签包含长文本，又正好跨页了。
- * 那么使用 href 的形式跳转，只能在当前渲染的 view 右下角显示该 text 的前半部分，后半部分在下一页无法自动跳转。
- * 这时候就需要使用 rendition.display(cfi) 的形式.
- * 1. 先通过 section.cfiFromElement(sec.document.getElementById("ae00310")); 获取该标签元素的 cfi
- *    得到 'epubcfi(/6/10!/4/2/108/2/6[ae00310])'
- * 2. 假设该标签内共有 60 个字符, 后 20 个字符被渲染在下一页
- *    根据 cfi 规则
- *    epubcfi(/6/10!/4/2/108/2/6[ae00310]/1:45) 后面加上 /1 表示取该元素的第一个文本子元素, :45 表示第45个字符
- *    但是这又有一个问题，我们无法知道它的子元素的构成, 除非自己再进行详细解析。
- *    比如: <p id="ae00310">hello, <b>word.</b> Let's read some book.</p>
- *    这时候, hello 就是在 /1:0 到 /1:4. 而 Let's 则是从 /5:0 开始了。
- * 文本子元素可能是  /1:0 ~ /1:30, 然后中间有一个标签元素分割，然后再到第二个文本子元素这样，这时候第二个文本子元素的 offset 就变成了 /5:1 ~ /5:30 了。
- * 3. 可以通过 rendition.location 获取当前渲染的开始位置与结束位置的 cfi, 用来判断当前文本的 cfi 落在这个范围内
- * 4. 通过 rendition.display('epubcfi(/6/10!/4/2/108/2/6[ae00310]/1:45)') 就能跳转到显示第45个字符的页面了。
  */
 
 

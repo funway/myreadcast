@@ -35,14 +35,18 @@ export const LibraryFolderTable = sqliteTable('library_folder', {
   path: text('path').notNull(),
   libraryId: text('library_id').notNull(),
   ...timestamps,
-});
+},
+  (table) => [ 
+    uniqueIndex('libfolder_unique_path_lib').on(table.path, table.libraryId),
+  ]
+);
 
 export const BookTable = sqliteTable('book', {
   id: text('id').primaryKey(),
   libraryId: text('library_id').notNull(),
   type: text('type', { enum: ['epub', 'audible_epub', 'audios'] }).notNull(),
   
-  path: text('path').notNull().unique(),  // 原始文件(文件夹)路径
+  path: text('path').notNull(),  // 原始文件(文件夹)路径
   mtime: integer('mtime').notNull(),      // 文件修改时间
   size: integer('size').notNull(),        // 文件大小
   
@@ -63,7 +67,11 @@ export const BookTable = sqliteTable('book', {
   tags: text('tags', { mode: 'json' }).notNull().default(sql`'[]'`),
   genre: text('genre', { mode: 'json' }).notNull().default(sql`'[]'`),
   ...timestamps,
-});
+},
+  (table) => [ 
+    uniqueIndex('book_unique_path_lib').on(table.path, table.libraryId),
+  ]
+);
 
 export const ReadingProgressTable = sqliteTable('reading_progress', {
   id: text('id').primaryKey(),
@@ -73,14 +81,14 @@ export const ReadingProgressTable = sqliteTable('reading_progress', {
   epubCfi: text('epub_cfi'),
   epubProgress: real('epub_progress'),
   
-  audioIndex: integer('audio_index'),
-  audioSeek: real('audio_seek'),
-  audioProgress: real('audio_progress'),
+  trackIndex: integer('track_index'),
+  trackSeek: real('track_seek'),
+  trackProgress: real('track_progress'),
   
   ...timestamps,
   }, 
   (table) => [ 
-    uniqueIndex('unique_user_book').on(table.userId, table.bookId),
+    uniqueIndex('readprogress_unique_user_book').on(table.userId, table.bookId),
   ]
 );
 

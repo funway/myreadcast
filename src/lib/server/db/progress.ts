@@ -1,5 +1,5 @@
-import { and, eq } from "drizzle-orm";
-import { ReadingProgressTable } from "./schema";
+import { and, eq, getTableColumns } from "drizzle-orm";
+import { BookTable, ReadingProgressTable } from "./schema";
 import { db } from "@/lib/server/db";
 import { generateId } from "../helpers";
 
@@ -44,6 +44,24 @@ export const ProgressService = {
       .from(ReadingProgressTable)
       .where(
         eq(ReadingProgressTable.userId, userId)
+      );
+  },
+
+  allProgressByUserInLibrary: async (userId: string, libraryId: string) => {
+    const { _, $inferSelect, $inferInsert, ...ProgressColumns } = ReadingProgressTable;
+    return await db
+      .select({
+        ...getTableColumns(ReadingProgressTable),
+      })
+      .from(ReadingProgressTable)
+      .innerJoin(BookTable,
+        eq(ReadingProgressTable.bookId, BookTable.id)
+      )
+      .where(
+        and(
+          eq(ReadingProgressTable.userId, userId),
+          eq(BookTable.libraryId, libraryId),
+        ),
       );
   },
 

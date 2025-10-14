@@ -22,6 +22,8 @@ export class EpubManager {
    */
   private locationsReady: boolean = false;
 
+  private isRendered: boolean = false;
+
   constructor(updateState: StateUpdater, emit: ReaderEventEmitter) {
     this.updateState = updateState;
     this.emit = emit;
@@ -62,7 +64,7 @@ export class EpubManager {
     }
   }
 
-  public async attachTo(element: HTMLElement, settings: EpubViewSettings)
+  public async attachTo(element: HTMLElement, settings: EpubViewSettings, cfi?: string)
   {
     if (!this.book || !element) {
       console.error('Book not loaded or element not provided to attachTo.');
@@ -93,6 +95,7 @@ export class EpubManager {
     // 3. Listen to rendered event to inject event handler into iframe (iframe 载入事件)
     this.rendition.on('rendered', (section: Section, view: View) => {
       console.log("<EpubManager> epub.js, Rendition evnet, rendered:", section, view);
+      this.isRendered = true;
       
       view.document!.addEventListener('dblclick', (event: MouseEvent) => {
         console.log("<EpubManager> epub.js, Rendition, View event, dbclick event in view.document.", event.target,
@@ -120,13 +123,15 @@ export class EpubManager {
     });
 
     // 5. Display
-    await this.rendition.display();
+    console.log('<EpubManager.attachTo> Initially display cfi:', cfi);
+    await this.rendition.display(cfi);
   }
 
   public detach() {
     // This could be expanded to hide the rendition without destroying it
     this.rendition?.destroy();
     this.rendition = null;
+    this.isRendered = false;
   }
 
   public destroy() {
@@ -140,6 +145,7 @@ export class EpubManager {
     this.rendition = null;
     this.book = null;
     this.locationsReady = false;
+    this.isRendered = false;
   }
 
   public getToc(): NavItem[] {
@@ -155,24 +161,30 @@ export class EpubManager {
   }
 
   public getCfi(chapterSrc: string, tagId: string, offsetRatio: number = 0) {
-    const section = this.book?.spine.get(chapterSrc);
+    if (!this.isRendered || !this.rendition || !this.book) {
+      return null;
+    }
+
+    const section = this.book.spine.get(chapterSrc);
     if (!section) {
       console.warn(`<EpubManager.getCfi> Section not found for chapterSrc: ${chapterSrc}`);
       return null;
     }
 
-    if (!section.document) {
-      console.warn(`<EpubManager.getCfi> Document of section ${chapterSrc} is not loaded`);
+    const document = this.rendition.views().find(section)?.document; 
+
+    if (!document) {
+      console.warn(`<EpubManager.getCfi> Document of ${chapterSrc} is not loaded`);
       return null;
     }
     
-    const elem = section.document.getElementById(tagId);
+    const elem = document.getElementById(tagId);
     if (!elem) {
       console.warn(`<EpubManager.getCfi> Element with id ${tagId} not found in section: ${chapterSrc}`);
       return null;
     }
     const elemCfi = section.cfiFromElement(elem);
-    console.log('<EpubManager.getCfi> The tag element cfi:', elemCfi);
+    // console.log('<EpubManager.getCfi> The tag element cfi:', elemCfi);
 
     // 计算 elem 下面的全部字符数
     const totalLength = elem.textContent.length;
@@ -199,17 +211,17 @@ export class EpubManager {
         accumulated += textLength;
       }
     }
-    console.log('<EpubManager.getCfi> Calculate target:', target, nodeIndex, nodeOffset);
+    // console.log('<EpubManager.getCfi> Calculate target:', target, offsetRatio, nodeIndex, nodeOffset);
 
     // Use section.cfiFromElement to get the base CFI, then use cfiFromRange if offset is needed
     if (nodeIndex !== -1 && nodeOffset !== -1) {
-      const range = section.document.createRange();  // Create a empty range
+      const range = document.createRange();  // Create a empty range
       const textNode = elem.childNodes[nodeIndex];
       range.setStart(textNode, nodeOffset);          // Set range start position
       // range.setEnd(textNode, nodeOffset);         // We dont need end position here
       const cfiWithOffset = section.cfiFromRange(range);
       
-      console.log('<EpubManager.getCfi> The cfi with chars offset:', cfiWithOffset);
+      // console.log('<EpubManager.getCfi> The cfi with chars offset:', cfiWithOffset);
       return cfiWithOffset;
     }
     return elemCfi;
@@ -238,13 +250,12 @@ export class EpubManager {
    * @returns 
    */
   public cfiDisplaying(cfi: string): boolean {
-    if (this.rendition) {
+    if (this.rendition?.location) {
       const { start, end } = this.rendition.location;
       const afterLeft = this.rendition.epubcfi.compare(cfi, start.cfi);
       const beforeRight = this.rendition.epubcfi.compare(end.cfi, cfi);
-      
-      console.log('start, end, target:', start, end, cfi,
-        'compare:', afterLeft, beforeRight);
+      // console.log('<EpubManager.cfiDisplaying> start, end, target:', start, end, cfi,
+      //   'compare:', afterLeft, beforeRight);
 
       if (afterLeft >=0 && beforeRight >=0 ) {
         return true;
@@ -297,13 +308,11 @@ export class EpubManager {
   }
 
   public highlightText(textSrc: string, textId: string) { 
-    console.log(`<EpubManager.highlightText> ${textSrc}#${textId}`);
-    if (!this.rendition || !this.book) {
+    // console.log(`<EpubManager.highlightText> ${textSrc}#${textId}`);
+    if (!this.isRendered || !this.rendition || !this.book) {
       console.warn('<EpubManager.highlightText> rendition or book not ready');
       return;
     }
-
-    this.clearHighlight();
 
     const views = this.rendition.views().all();
     for (const view of views) {
@@ -326,7 +335,7 @@ export class EpubManager {
    * 清除 rendition.views 中所有 .smil-highlight 的 CSS class
    */
   public clearHighlight() { 
-    if (!this.rendition) return;
+    if (!this.isRendered || !this.rendition) return;
     const views = this.rendition.views().all();
     for (const view of views) {
       const doc = view.document;

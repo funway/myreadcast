@@ -97,7 +97,7 @@ export default function LibrariesPanel({ className }: Props) {
           // 任务失败
           const errorMessage = task.result || 'Task failed';
           updateLibraryScanStatus(libraryId, 'error');
-          toast.error(`Library [${currentLibrary?.name || 'Unknown Library'}] scan failed - ${errorMessage}`);
+          toast.error(`Library [${currentLibrary?.name || 'Unknown Library'}] scan failed`);
           return;
         }
         

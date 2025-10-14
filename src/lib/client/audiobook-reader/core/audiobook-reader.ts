@@ -9,8 +9,6 @@ import {
   ReaderSettings,
   AudioPlaySettings,
   EpubViewSettings,
-  EpubProgress,
-  AudioProgress,
   ReadingProgress,
 } from '../types';
 import { EpubManager } from './epub-manager';
@@ -68,7 +66,6 @@ class AudioBookReader {
   private static instance: AudioBookReader;
   private emitter: Emitter<ReaderEvents> = mitt<ReaderEvents>();
   private state: ReaderState;
-  private progressSaved: ReadingProgress = {};    // 阅读进度 (与数据库保持同步, 不保证实时同步) 
 
   private epubManager: EpubManager;     // 负责 Epub 的加载和渲染
   private audioManager: AudioManager;   // 负责 Audio 的加载和播放
@@ -139,75 +136,45 @@ class AudioBookReader {
     }
   }
 
-  public async open(bookConfig: BookConfig, progress: ReadingProgress = {}) {
-    console.log('<reader> Opening book:', bookConfig.title, progress);
+  public async open(bookConfig: BookConfig) {
+    console.log('<reader> Opening book:', bookConfig.title);
     
     // 1. Reset state before opening a new book
     this.close();
 
-    // this.progressSaved = progress;
-    // Load book progress
-    // 发起请求 GET /api/progress/bookId 得到
+    // 2. Fetch reading progress
+    const progress: ReadingProgress = {};
     try {
       const res = await fetch(`/api/progress/${bookConfig.id}`);
       if (res.ok) {
-      const data = await res.json();
-      this.progressSaved = data as ReadingProgress;
+        const data = (await res.json()).data;
+        console.log('<AudioBookReader.open> Got progress data from db:', data);
+        if (data.epubCfi !== undefined && data.epubProgress !== undefined) {
+          progress.epub = { cfi: data.epubCfi, progress: data.epubProgress };
+        }
+        if (data.trackIndex !== undefined && data.trackSeek !== undefined && data.trackProgress !== undefined) {
+          progress.audio = { trackIndex: data.trackIndex, trackSeek: data.trackSeek, progress: data.trackProgress };
+        }
+
+        console.log('<AudioBookReader.open> Parsed progress', progress);
       } else {
-      this.progressSaved = progress;
       }
     } catch (err) {
       console.error('<AudioBookReader.open> Failed to load progress:', err);
-      this.progressSaved = progress;
     }
 
     // 2. Load new book
     if (bookConfig.type === 'epub') {
       await this.epubManager.load(bookConfig.opfPath!);
-      if (progress.epub) {
-        this.goToCfi(progress.epub.cfi);
-      }
     } else if (bookConfig.type === 'audible_epub') {
       // 2.1 加载 EPUB
       await this.epubManager.load(bookConfig.opfPath!);
       // 2.2 加载 音频播放列表
       this.audioManager.loadPlaylist(bookConfig.playlist);
       this.audioManager.applySettings(this.state.settings.audioPlay);
-      this.smilManager.load(bookConfig.smilPath!);
-
-      if (progress.epub) {
-        this.goToCfi(progress.epub.cfi);
-      }
-      // if (progress.audio) {
-      //   // this.
-      // }
-
-      // 2.3 加载 SMIL
-      /**
-       * TODO: 现在的 SMILManager 只是一个空壳，还没有实现任何功能
-       * 我们需要实现:
-       * 
-       * 1. 加载已经处理好的 smil.json 文件 this.smilManager.load(bookConfig.smilPath!);
-       * 里面的每个元素是如下的形式：
-       * {
-          "id": "p00001",
-          "textSrc": "_21463_25106__split_000.html",
-          "textId": "ae00001",
-          "audioSrc": "audio/aud_0.mp3",
-          "clipBegin": 0.05,
-          "clipEnd": 2.562
-          },
-       * 
-       * 2. 提供一个方法, 输入 textSrc, textId, 返回对应的 smilpar, 然后计算 trackIndex (从 playlist 中找) 跟 clipBegin
-       *  然后我们就可以调用 setTrack() 来播放对应的音频
-       * 
-       * 3. 提供一个方法，输入 trackIndex 跟 currentTime, 返回对应的 smilpar
-       *  然后我就可以调用一个新方法，通过 epubManager 中的 epub.js 给 textId 的标签增加一个 highlight css 类(清除之前的 highligh 标签)
-       *  但这里需要判断当前 iframe view 中显示的是否是 textsrc 文件(如果不是，就不用高亮)
-       * 
-       * 4. 我们还需要实现一个 实时同步的 开关，当启用实时同步的时候，需要自动加载对应的 textsrc。并且高亮 textId 标签 (如果该 textId 标签不在当前视口，自动翻页到该 textId 显示在窗口中)
-       */
       
+      // 2.3 加载 smil
+      this.smilManager.load(bookConfig.smilPath!);
 
     } else if (bookConfig.type === 'audios') {
       this.audioManager.loadPlaylist(bookConfig.playlist);
@@ -216,13 +183,26 @@ class AudioBookReader {
       console.error(`<AudiobookReader.open> book [${bookConfig.path}] typte (${bookConfig.type}) unrecognized!`);
       return;
     }
-    this.emit('book-loaded', bookConfig);
     
     // 3. Update ReaderState
     this.updateState({
       isOpen: true,
       book: bookConfig,
+      currentCfi: progress.epub?.cfi,
+      currentTrackIndex: progress.audio?.trackIndex,
+      currentTrackTime: progress.audio?.trackSeek,
     });
+
+    // 4. 初始化音频
+    if (progress.audio) {
+      this.setTrack({
+        trackIndex: progress.audio.trackIndex,
+        offset: progress.audio.trackSeek,
+        play: this.state.settings.audioPlay.autoPlay,
+      });
+    }
+    
+    this.emit('book-loaded', bookConfig);
   }
 
   public close() {
@@ -231,8 +211,9 @@ class AudioBookReader {
     this.epubManager.destroy();
     this.audioManager.destroy();
     this.smilManager.destroy();
-    this.progressSaved = {};
     
+    this._debouncedSaveEpubProgress.cancel();
+
     this.state = this.getInitialState();
     this.emit('state-changed', this.state);
   }
@@ -393,7 +374,7 @@ class AudioBookReader {
 
   public attachView(element: HTMLElement) {
     if (this.state.book?.type === 'epub' || this.state.book?.type === 'audible_epub') {
-      this.epubManager.attachTo(element, this.state.settings.epubView);
+      this.epubManager.attachTo(element, this.state.settings.epubView, this.state.currentCfi);
     }
   }
 
@@ -422,7 +403,7 @@ class AudioBookReader {
       if (trackIndex === undefined || trackIndex === -1) {
         return;
       }
-      this.audioManager.setTrack({
+      this.setTrack({
         trackIndex,
         offset: smilpar.clipBegin,
         play: true
@@ -492,9 +473,9 @@ class AudioBookReader {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        audioIndex: trackIndex,
-        audioSeek: trackTime,
-        audioProgress: progres,
+        trackIndex: trackIndex,
+        trackSeek: trackTime,
+        trackProgress: progres,
       }),
     }).catch(err => {
       console.error('<reader._saveAudioProgress> Failed to update audio progress:', err);
@@ -524,19 +505,18 @@ class AudioBookReader {
 
       // sync highlighting
       if (this.state.settings.audioPlay.syncHighlight && smilPar) {
+        this.epubManager.clearHighlight();
         this.epubManager.highlightText(smilPar.textSrc, smilPar.textId);
       }
 
       // sync jumping
       if (this.state.settings.audioPlay.syncPage && smilPar) {
-        // const href = `${smilPar.textSrc}#${smilPar.textId}`;
-        // await this.goToHref(href);
         const clipDuration = smilPar.clipEnd - smilPar.clipBegin;
-        const clipOffset = this.getCurrentTrackSeek() - smilPar.clipBegin;
+        const clipOffset = Math.max(this.getCurrentTrackSeek() - smilPar.clipBegin, 0);
         const cfi = this.epubManager.getCfi(smilPar.textSrc, smilPar.textId, clipOffset / clipDuration);
         
         if (cfi && this.epubManager.cfiDisplaying(cfi)) {
-          console.log('<reader.onAudioProgressUpdated> cfi is displaying, do nothing');
+          // console.log('<reader.onAudioProgressUpdated> cfi is displaying, do nothing');
         } else if (cfi) {
           await this.goToCfi(cfi);
         } else {
@@ -567,7 +547,7 @@ class AudioBookReader {
         this.setVolume(this.state.settings.audioPlay.volume - 0.1);
         break;
       case 'togglePlay':
-        this.audioManager.togglePlay();
+        this.togglePlay();
         break;
       case "closeModal":
         this.close();

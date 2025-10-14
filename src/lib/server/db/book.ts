@@ -22,6 +22,7 @@ export type BookQueryOptions = {
   type?: BookType;
   author?: string;
   narrator?: string;
+  language?: string;
   genre?: string[];
   tags?: string[];
   search?: string;  // 搜索标题、作者、描述
@@ -114,6 +115,7 @@ export const BookService = {
       type,
       author,
       narrator,
+      language,
       genre,
       tags,
       search,
@@ -132,6 +134,10 @@ export const BookService = {
 
     if (type) {
       conditions.push(eq(BookTable.type, type));
+    }
+
+    if (language) {
+      conditions.push(eq(BookTable.language, language));
     }
 
     if (author) {
@@ -204,12 +210,17 @@ export const BookService = {
     return books;
   },
 
+  queryBooksWithProgress: async (options: BookQueryOptions = {}) => { 
+
+  },
+
   queryBooksCount: async (options: BookQueryOptions = {}): Promise<number> => {
     const {
       libraryId,
       type,
       author,
       narrator,
+      language,
       genre,
       tags,
       search,
@@ -225,6 +236,10 @@ export const BookService = {
       conditions.push(eq(BookTable.type, type));
     }
 
+    if (language) {
+      conditions.push(eq(BookTable.language, language));
+    }
+
     if (author) {
       conditions.push(like(BookTable.author, `%${author}%`));
     }
@@ -232,6 +247,7 @@ export const BookService = {
     if (narrator) {
       conditions.push(like(BookTable.narrator, `%${narrator}%`));
     }
+
 
     if (genre && genre.length > 0) {
       const genreConditions = genre.map(g =>

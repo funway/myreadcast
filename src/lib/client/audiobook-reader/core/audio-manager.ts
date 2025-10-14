@@ -67,7 +67,7 @@ export class AudioManager {
             debug_msg: 'Howl onload fired'
           });
         },
-        onplay: (id) => {  // But sound.playing() does not immediately return true.
+        onplay: (id) => {  // But sound.playing() does not immediately return true!!!
           console.log(`<AudioManager> Howl event - Track start playing. index=${trackIndex}, soundId=${id}`);
           this.sound?.rate(this.playbackRate);
           this.updateState({
@@ -144,7 +144,15 @@ export class AudioManager {
     this.setTrack({ trackIndex, offset, play: false});
   }
 
-  private startProgressTracking(delay: number = 100) {
+  private startProgressTracking(delay: number = 150) {
+    /**
+     * TODO 优化 sound displaying 的判断
+     * 增加这个 delay 的原因，是因为 sound.onplay 事件调用 startProgressTracking 的那一个时刻, 
+     * sound.playing() 可能还不能及时返回 true, 导致我们又调用了 stopProgressTracking() ...
+     * (想复现这个 BUG 把 delay 调小一点，然后在网页前端快速切换音频)
+     * 
+     * 我们可以把这个 startProgressTracking 导出给 AudiobookReader 来根据自己的 isPlaying 变量进行控制
+     */
     this.stopProgressTracking();
     console.log(`<AudioManager> startProgressTracking. delay ${delay}ms`);
     
@@ -162,7 +170,7 @@ export class AudioManager {
         this.progressTracking = window.setTimeout(step, PROGRESS_TRACKING_INTERVAL);
       } else {
         // 停止 tracking
-        this.progressTracking = null;
+        this.stopProgressTracking();
       }
     };
     
@@ -171,6 +179,7 @@ export class AudioManager {
   }
 
   private stopProgressTracking() {
+    console.log('<AudioManager.stopProgressTracking>');
     if (this.progressTracking) {
       clearTimeout(this.progressTracking);
     }
